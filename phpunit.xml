@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <phpunit
+        colors="true"
+        verbose="true"
+        bootstrap="vendor/autoload.php">
+        <php>
+            <var name="STR_TYPE" value="Str(foo)"/>
+            <var name="INT_TYPE" value="Int(2)"/>
+            <var name="ARR_INT" value="Arr(1,2,3)"/>
+            <var name="ARR_STR" value="Arr(foo,bar,baz)"/>
+        </php>
+        <testsuites>
+            <testsuite name="bingo-functional-repl testsuite">
+                <directory>tests</directory>
+            </testsuite>
+        </testsuites>
+    </phpunit>

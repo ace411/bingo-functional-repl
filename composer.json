@@ -1,0 +1,31 @@
+{
+    "name": "chemem/bingo-functional-repl",
+    "description": "A simple REPL for the bingo-functional library.",
+    "type": "library",
+    "license": "Apache 2.0",
+    "authors": [
+        {
+            "name": "Lochemem Bruno Michael",
+            "email": "lochbm@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require-dev": {
+        "phpunit/phpunit": "^5.7"
+    },
+    "require": {
+        "php": ">=7.0.0",
+        "chemem/bingo-functional": "^1.4.0",
+        "functional-php/pattern-matching": "^0.3.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Chemem\\Bingo\\Functional\\Repl\\": "src/"
+        },
+        "files": [
+            "src/IO/functions.php",
+            "src/Constants/constants.php"
+        ]
+    },
+    "bin": ["bin/repl"]
+}
