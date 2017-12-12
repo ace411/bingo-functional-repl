@@ -9,7 +9,7 @@
  * @license Apache 2.0
  */
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 
 use Chemem\Bingo\Functional\Repl\{IO as Impure, Constants};
 use Chemem\Bingo\Functional\Algorithms as A;
