@@ -27,5 +27,5 @@
             "src/Constants/constants.php"
         ]
     },
-    "bin": ["bin/repl"]
+    "bin": ["bin/repl.php"]
 }
