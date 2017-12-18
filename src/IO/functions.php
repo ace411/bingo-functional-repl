@@ -105,7 +105,7 @@ function printOutput($output) : string
     list($result, $log) = Writer::of($output, 'Result: ')
         ->run();
     
-    return $log . (is_array($result) ? json_encode($result) : $result) . PHP_EOL;
+    return $log . (resolveReturnFormat($result)) . PHP_EOL;
 }
 
 /**
@@ -225,4 +225,34 @@ function parseArgs(array $args) : array
                 );
             }
         );
+}
+
+/**
+ * resolveReturnFormat function
+ * 
+ * @param mixed $input
+ * @return string $output
+ */
+
+const resolveReturnFormat = "Chemem\\Bingo\\Functional\\Repl\\IO\\resolveReturnFormat";
+
+function resolveReturnFormat($input)
+{
+    return PM\match(
+        [
+            '"string"' => function () use ($input) {
+                return (string) $input;
+            },
+            '"integer"' => function () use ($input) {
+                return (string) $input;
+            },
+            '"array"' => function () use ($input) {
+                return json_encode($input, JSON_NUMERIC_CHECK);
+            },
+            '_' => function () {
+                return A\concat('', 'Nothing returned');
+            }
+        ],
+        gettype($input)
+    );
 }
