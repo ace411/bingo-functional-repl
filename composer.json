@@ -11,12 +11,13 @@
     ],
     "minimum-stability": "dev",
     "require-dev": {
-        "phpunit/phpunit": "^5.7"
+        "phpunit/phpunit": "6.5.8"
     },
     "require": {
         "php": ">=7.0.0",
         "chemem/bingo-functional": "^1.4.0",
-        "functional-php/pattern-matching": "^0.3.1"
+        "functional-php/pattern-matching": "^0.3.1",
+        "nikic/php-parser": "4.0.1"
     },
     "autoload": {
         "psr-4": {
