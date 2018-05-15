@@ -50,31 +50,16 @@ const REPL_WELCOME = "Welcome to the bingo-functional REPL" . PHP_EOL . "Designe
  * @var string REPL_COMMAND_HELPER
  */
 
-const REPL_COMMAND_HELPER = "Command format: <function> -> <arguments>" . PHP_EOL . "Arguments are comma separated.";
+const REPL_COMMAND_HELPER = "The REPL is built atop a php-parser. Idiomatic PHP code is accepted but" . PHP_EOL .
+    "should be exclusive to the helper functions and monads in the bingo-functional library.";
 
 /**
- * @var string REPL_ARGUMENT_HELPER
+ * @var array REPL_CONSTANTS
  */
 
-const REPL_ARGUMENT_HELPER = "Supported types: String, Int, Arr" . PHP_EOL . 
-    "Arg format: Type(value)" . PHP_EOL .
-    "Defaults to string if not specified";
-
-/**
- * @var array REPL_SUPPORTED_HELPERS
- */
-
-const REPL_SUPPORTED_HELPERS = [
-    'identity',
-    'isArrayOf',
-    'pluck',
-    'pick',
-    'head',
-    'tail',
-    'partition',
-    'concat',
-    'extend',
-    'zip'
+const REPL_CONSTANTS = [
+    'help' => REPL_COMMAND_HELPER,
+    'version' => '1.0.0'
 ];
 
 /**
@@ -82,3 +67,24 @@ const REPL_SUPPORTED_HELPERS = [
  */
 
 const HELPER_NAMESPACE = "Chemem\\Bingo\\Functional\\Algorithms\\";
+
+/**
+ * @var string FUNCTOR_NAMESPACE
+ */
+
+const FUNCTOR_NAMESPACE = 'Chemem\\Bingo\\Functional\\Functors\\';
+
+/**
+ * @var array FUNCTORS
+ */
+
+const FUNCTORS = [
+    'IO' => 'Monads\\',
+    'State' => 'Monads\\',
+    'Writer' => 'Monads\\',
+    'Reader' => 'Monads\\',
+    'ListMonad' => 'Monads\\',
+    'Either' => 'Either\\',
+    'Maybe' => 'Maybe\\',
+    'Applicative' => 'Applicatives\\'
+];
