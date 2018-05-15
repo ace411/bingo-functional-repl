@@ -63,8 +63,11 @@ set_exception_handler(
  */
 
 set_error_handler(
-    function ($errNo, $errStr) {
-        echo A\concat(' ', Constants\REPL_ERROR, $errNo, $errStr, '');
+    function ($errNo, $errStr) : void {
+        printf(
+            A\concat(' ', Constants\REPL_ERROR, $errNo, $errStr),
+            '%s'
+        );
     }
 );
 
