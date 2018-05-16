@@ -11,7 +11,7 @@ A simple REPL for the bingo-functional library.
 
 ## Documentation
 
-Please check out the [documentation](https://github.com/ace411/bingo-functional-repl/blob/master/docs/main.md) for more knowledge on how to use this library.
+Please check out the [documentation](https://ace411.github.io/bingo-functional/docs/repl.html) for more knowledge on how to use this library.
 
 ## Dealing with problems
 
