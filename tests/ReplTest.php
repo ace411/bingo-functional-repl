@@ -8,238 +8,154 @@ use Chemem\Bingo\Functional\{
     Functors\Monads\IO as IOMonad,
     Functors\Monads\Reader
 };
+use FunctionalPHP\PatternMatching as PM;
 
 class ReplTest extends TestCase
 {
-    public function reconstructRepl(callable $action)
+    public function mimicRepl(callable $action)
     {
         return IOMonad::of($action)
             ->bind(IO\transformInput)
             ->flatMap(IO\printOutput);
     }
 
-    public function runCommand($cmd, ...$args)
+    public function output(string $condition, string $result)
     {
-        $cmdHandler = function ($cmd) {
-            return Reader::of(
-                function ($args) use ($cmd) {
-                    return $cmd . (is_array($args) ? implode(' ', $args) : $args);
+        return PM\match(
+            [
+                '"success"' => function () use ($result) {
+                    return A\concat(' ', Constants\REPL_RESULT, $result . PHP_EOL);
+                },
+                '"failure"' => function () use ($result) {
+                    return A\concat(' ', Constants\REPL_ERROR, $result . PHP_EOL);
+                },
+                '_' => function () {
+                    return '';
                 }
-            );
-        };
-
-        return Reader::of($cmd)
-            ->withReader($cmdHandler)
-            ->run($args);
-    }
-
-    public function testIdentityFunctionRunsInRepl()
-    {
-        $cmdRun = $this->runCommand('identity -> ', $GLOBALS['STR_TYPE']);
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, 'foo') . PHP_EOL
+            ],
+            $condition
         );
     }
 
-    public function testPluckFunctionRunsInRepl()
+    public function testMultiFunctionExpressionsRunInRepl()
     {
-        $cmdRun = $this->runCommand('pluck -> ', 2, $GLOBALS['ARR_INT']);
+        $stmts = [
+            'partialLeft(function ($a, $b) {return $a / $b;}, 10)(2)',
+            'partialRight(function ($a, $b) {return $a / $b;}, 2)(10)',
+            'compose(function ($a){return "Hello " . $a;}, "strtoupper")("World")',
+            'curry(function ($a, $b) {return $a * $b;})(6)(2)',
+            'curryN(2, function ($a, $b, $c = 3) {return $a + $b + $c;})(1)(2)'
+        ];
+
+        $results = A\map(
+            function ($stmt) {
+                return $this->mimicRepl(
+                    A\constantFunction($stmt)
+                );
+            },
+            $stmts
+        );
 
         $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, '3') . PHP_EOL
+            $results,
+            A\map(
+                function ($stmt) {
+                    return $stmt . PHP_EOL;
+                },
+                [
+                    'Result: 5',
+                    'Result: 5',
+                    'Result: "HELLO WORLD"',
+                    'Result: 12',
+                    'Result: 6'
+                ]
+            ) 
         );
     }
 
-    public function testPickFunctionRunsInRepl()
+    public function testSingleFunctionExpressionsRunInRepl()
     {
-        $cmdRun = $this->runCommand('pick -> ', 'foo', $GLOBALS['ARR_STR']);
+        $stmts = [
+            'map(function ($val) {return $val * 2;}, [1, 2, 3, 4])',
+            'filter(function ($val) {return $val > 2;}, [1, 2, 3, 4])',
+            'fold(function ($acc, $val) {return $acc + $val;}, [1, 2, 3, 4], 1)',
+            'concat("_", "functional", "programming")',
+            'arrayKeysExist([1, 2, 3], 0, 1)',
+            'constantFunction(12)',
+            'dropLeft([2, 4, 6, 8], 2)',
+            'dropRight([2, 4, 6, 8], 2)',
+            'head([1, 2, 3])',
+            'tail([1, 2, 3])'
+        ];
+
+        $results = A\map(
+            function ($stmt) {
+                return $this->mimicRepl(
+                    A\constantFunction($stmt)
+                );
+            },
+            $stmts
+        );
 
         $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, 'foo') . PHP_EOL
+            $results, 
+            A\map(
+                function ($val) {
+                    return $val . PHP_EOL;
+                },
+                [
+                    'Result: [2,4,6,8]', 
+                    'Result: [3,4]', 
+                    'Result: 11',
+                    'Result: "functional_programming"',
+                    'Result: true',
+                    'Result: <Closure> {}',
+                    'Result: [6,8]',
+                    'Result: [2,4]',
+                    'Result: 1',
+                    'Result: [2,3]'
+                ]
+            )
         );
     }
 
-    public function testIsArrayOfFunctionRunsInRepl()
+    public function testMonadsRunInRepl()
     {
-        $cmdRun = $this->runCommand('isArrayOf -> ', $GLOBALS['ARR_STR']);
+        $stmts = [
+            'IO::of(function () {return 2;})',
+            'State::of(1)->flatMap(function ($val) {return $val + 2;})',
+            'ListMonad::of(1, 2, 3)',
+            'Writer::of(1, "Init val")',
+            'Reader::of(12)',
+            'Either::right(12)->map(function ($val) {return $val * 2;})',
+            'Maybe::fromValue(12)->map(function ($val) {return $val / 2;})->flatMap(function ($val) {return $val + 2;})'
+        ];
 
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, 'string') . PHP_EOL
+        $results = A\map(
+            function ($stmt) {
+                return $this->mimicRepl(
+                    A\constantFunction($stmt)
+                );
+            },
+            $stmts
         );
-    }
-
-    public function testHeadFunctionRunsInRepl()
-    {
-        $cmdRun = $this->runCommand('head -> ', $GLOBALS['ARR_INT']);
 
         $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, '1') . PHP_EOL
-        );
-    }
-
-    public function testTailFunctionRunsInRepl()
-    {
-        $cmdRun = $this->runCommand('tail -> ', $GLOBALS['ARR_INT']);
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, json_encode([2,3])) . PHP_EOL
-        );
-    }
-
-    public function testPartitionFunctionRunsInRepl()
-    {
-        $cmdRun = $this->runCommand('partition -> ', 2, $GLOBALS['ARR_INT']);
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, json_encode([[1,2], [3]])) . PHP_EOL
-        );
-    }
-
-    public function testConcatFunctionRunsInRepl()
-    {
-        $cmdRun = $this->runCommand('concat -> ', '-', $GLOBALS['STR_TYPE'], 'bar');
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, 'foo-bar') . PHP_EOL
-        );
-    }
-
-    public function testZipFunctionRunsInRepl()
-    {
-        $cmdRun = $this->runCommand('zip -> ', 'null', $GLOBALS['ARR_INT'], $GLOBALS['ARR_STR']);
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(
-                ' ', 
-                Constants\REPL_RESULT, 
-                json_encode([
-                    [1, 'foo'], 
-                    [2, 'bar'], 
-                    [3, 'baz']
-                ])
-            ) . PHP_EOL
-        );
-    }
-
-    public function testExtendFunctionRunsInRepl()
-    {
-        $cmdRun = $this->runCommand('extend -> ', $GLOBALS['ARR_INT'], $GLOBALS['ARR_STR']);
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(
-                ' ', 
-                Constants\REPL_RESULT, 
-                json_encode([1, 2, 3, 'foo', 'bar', 'baz'])
-            ) . PHP_EOL
-        );
-    }
-
-    public function testVersionCommandPrintsVersionNumber()
-    {
-        $cmdRun = $this->runCommand('version', '');
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(' ', Constants\REPL_RESULT, Constants\REPL_VERSION) . PHP_EOL
-        );
-    }
-
-    public function testListCommandPrintsListOfSupportedHelpers()
-    {
-        $cmdRun = $this->runCommand('list', '');
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(
-                ' ', 
-                Constants\REPL_RESULT, 
-                A\concat(
-                    PHP_EOL, 
-                    'The following helpers are supported:', 
-                    implode(PHP_EOL, Constants\REPL_SUPPORTED_HELPERS)
-                )
-            ) . PHP_EOL
-        );
-    }
-
-    public function testHelpCommandPrintsHowToUseInformation()
-    {
-        $cmdRun = $this->runCommand('help', '');
-
-        $this->assertEquals(
-            $this->reconstructRepl(
-                function () use ($cmdRun) {
-                    return $cmdRun;
-                }
-            ),
-            A\concat(
-                ' ', 
-                Constants\REPL_RESULT, 
-                A\concat(
-                    PHP_EOL, 
-                    Constants\REPL_COMMAND_HELPER, 
-                    Constants\REPL_ARGUMENT_HELPER
-                )
-            ) . PHP_EOL
+            $results,
+            A\map(
+                function ($stmt) {
+                    return $stmt . PHP_EOL;
+                },
+                [
+                    'Result: <IO> 2',
+                    'Result: [1,3]',
+                    'Result: <ListMonad> [1,2,3]',
+                    'Result: <Writer> [1,"Init val"]',
+                    'Result: <Reader> <Closure> no env value',
+                    'Result: <Right> 24',
+                    'Result: 8'
+                ]
+            )
         );
     }
 }
