@@ -2,3 +2,4 @@
 /vendor/.git
 /phpunit.xml
 /composer.lock
+/docs
