@@ -51,7 +51,8 @@ const REPL_WELCOME = "Welcome to the bingo-functional REPL" . PHP_EOL . "Designe
  */
 
 const REPL_COMMAND_HELPER = "The REPL is built atop a php-parser. Idiomatic PHP code is accepted but" . PHP_EOL .
-    "should be exclusive to the helper functions and monads in the bingo-functional library.";
+    "should be exclusive to the helper functions and monads in the bingo-functional library." . PHP_EOL .
+    "Check out the bingo-functional docs at https://ace411.github.io/bingo-functional";
 
 /**
  * @var array REPL_CONSTANTS
