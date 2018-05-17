@@ -1,7 +1,7 @@
 # Bingo Functional REPL
 
 <p align="center">
-  ![bingo-functional-repl-icon](https://ucarecdn.com/f99f2a54-7451-4603-a788-f7b14861c19f/bingofunctionalrepllogo600x338.png)
+  <img src="https://ucarecdn.com/f99f2a54-7451-4603-a788-f7b14861c19f/bingofunctionalrepllogo600x338.png">
 </p>
 
 [![Build Status](https://travis-ci.org/ace411/bingo-functional-repl.svg?branch=master)](https://travis-ci.org/ace411/bingo-functional-repl)
