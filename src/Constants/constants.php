@@ -2,7 +2,7 @@
 
 /**
  * Constants for bingo-functional-repl
- * 
+ *
  * @package bingo-functional-repl
  * @author Lochemem Bruno Michael
  * @license Apache 2.0

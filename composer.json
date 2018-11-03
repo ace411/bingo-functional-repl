@@ -9,9 +9,9 @@
             "email": "lochbm@gmail.com"
         }
     ],
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "require-dev": {
-        "phpunit/phpunit": "~6"
+        "phpunit/phpunit": "^6.5"
     },
     "require": {
         "php": ">=7.0.0",
