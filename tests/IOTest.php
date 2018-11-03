@@ -2,7 +2,7 @@
 
 use PHPUnit\Framework\TestCase;
 use Chemem\Bingo\Functional\{
-    Repl\IO, 
+    Repl\IO,
     Repl\Constants,
     Algorithms as A,
     Functors\Either
@@ -49,10 +49,10 @@ class IOTest extends TestCase
     public function testExecFunctorParsesFunctorCall()
     {
         $execFunctor = IO\execFunctor(
-            'State', 
+            'State',
             IO\transformInput('State::of(1)->map(function ($val) {return $val + 2;});')
         );
-        
+
         $this->assertTrue(is_string($execFunctor));
     }
 
@@ -93,7 +93,7 @@ class IOTest extends TestCase
             IO\transformInput,
             'json_encode',
             A\partialRight('json_decode', true),
-            IO\resolveInput            
+            IO\resolveInput
         )('echo "Michael";');
 
         $this->assertTrue(is_string($nonExecutable));

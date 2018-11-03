@@ -2,7 +2,7 @@
 
 use PHPUnit\Framework\TestCase;
 use Chemem\Bingo\Functional\{
-    Repl\IO, 
+    Repl\IO,
     Repl\Constants,
     Algorithms as A,
     Functors\Monads\IO as IOMonad,
@@ -69,7 +69,7 @@ class ReplTest extends TestCase
                     'Result: 12',
                     'Result: 6'
                 ]
-            ) 
+            )
         );
     }
 
@@ -98,19 +98,19 @@ class ReplTest extends TestCase
         );
 
         $this->assertEquals(
-            $results, 
+            $results,
             A\map(
                 function ($val) {
                     return $val . PHP_EOL;
                 },
                 [
-                    'Result: [2,4,6,8]', 
-                    'Result: [3,4]', 
+                    'Result: [2,4,6,8]',
+                    'Result: {"2":3,"3":4}',
                     'Result: 11',
                     'Result: "functional_programming"',
                     'Result: true',
                     'Result: <Closure> {}',
-                    'Result: [6,8]',
+                    'Result: {"2":6,"3":8}',
                     'Result: [2,4]',
                     'Result: 1',
                     'Result: [2,3]'
@@ -149,7 +149,7 @@ class ReplTest extends TestCase
                 [
                     'Result: <IO> 2',
                     'Result: [1,3]',
-                    'Result: <ListMonad> [1,2,3]',
+                    'Result: <ListMonad> [1]',
                     'Result: <Writer> [1,"Init val"]',
                     'Result: <Reader> <Closure> no env value',
                     'Result: <Right> 24',

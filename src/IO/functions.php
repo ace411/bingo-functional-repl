@@ -2,7 +2,7 @@
 
 /**
  * IO functions for bingo-functional-repl
- * 
+ *
  * @package bingo-functional-repl
  * @author Lochemem Bruno Michael
  * @license Apache 2.0
@@ -15,7 +15,7 @@ use Chemem\Bingo\Functional\Repl\Constants;
 use Chemem\Bingo\Functional\{Algorithms as A};
 use FunctionalPHP\PatternMatching as PM;
 use Chemem\Bingo\Functional\Functors\{
-    Monads\IO, 
+    Monads\IO,
     Monads\State,
     Either
 };
@@ -27,7 +27,7 @@ function getInput() : IO
     return IO::of(
         function () {
             return printf(
-                A\concat(' ', Constants\REPL_PREFIX, ''), 
+                A\concat(' ', Constants\REPL_PREFIX, ''),
                 '%s'
             );
         }
@@ -68,7 +68,7 @@ function printOutput(array $stmts) : string
         ->flatMap(A\identity);
 
     return A\concat(PHP_EOL, compileInput($input), '');
-} 
+}
 
 const compileInput = 'Chemem\\Bingo\\Functional\\Repl\\IO\\compileInput';
 
@@ -106,14 +106,14 @@ function compileInput(array $input) : string
                                 },
                                 '_' => function () use ($prefix, $value) {
                                     return A\concat(
-                                        ' ', 
+                                        ' ',
                                         Constants\REPL_ERROR,
                                         A\concat(' ', 'Cannot output value')
                                     );
                                 }
                             ],
                             $value['exprs'][0]['nodeType']
-                        );                        
+                        );
                     },
                     $arrInput,
                     Constants\REPL_RESULT
@@ -133,10 +133,10 @@ function compileInput(array $input) : string
                                 A\partialRight('json_decode', true)
                             )($func);
 
-                            $fnStatus = isset($funcProperties['name']['parts'][0]) ? 
+                            $fnStatus = isset($funcProperties['name']['parts'][0]) ?
                                 'single-expr' :
                                 'multi-expr';
-                            
+
                             return PM\match(
                                 [
                                     '["multi", "expr"]' => function () use ($objInput) {
@@ -152,14 +152,14 @@ function compileInput(array $input) : string
                                                 A\head
                                             )($stmt);
 
-                                            $toCompile = function_exists($trueFn) ? 
+                                            $toCompile = function_exists($trueFn) ?
                                                 A\concat(' ', '$success =', $stmt . ';') :
                                                 '$error = "Error: Function does not exist";';
 
                                             eval($toCompile);
 
-                                            return isset($success) ? 
-                                                conveyOutput($success) : 
+                                            return isset($success) ?
+                                                conveyOutput($success) :
                                                 $error;
                                         };
 
@@ -172,8 +172,8 @@ function compileInput(array $input) : string
                                         );
 
                                         $fnName = A\concat(
-                                            '', 
-                                            Constants\HELPER_NAMESPACE, 
+                                            '',
+                                            Constants\HELPER_NAMESPACE,
                                             $arrInput[0]['expr']['name']['parts'][0]
                                         );
 
@@ -201,7 +201,7 @@ function compileInput(array $input) : string
                         '"Expr_ConstFetch"' => function () use ($objInput, $arrInput) {
                             $constName = $arrInput[0]['expr']['name']['parts'][0];
 
-                            return isset(Constants\REPL_CONSTANTS[$constName]) ? 
+                            return isset(Constants\REPL_CONSTANTS[$constName]) ?
                                 A\concat(
                                     ' ',
                                     Constants\REPL_RESULT,
@@ -225,7 +225,7 @@ function compileInput(array $input) : string
                         '"Expr_MethodCall"' => function () use ($arrInput, $objInput) {
                             $class = (new NodeFinder)
                                 ->findInstanceOf($objInput, Node\Expr\StaticCall::class);
-                            
+
                             $classArr = A\compose(
                                 'json_encode',
                                 A\partialRight('json_decode', true)
@@ -273,7 +273,7 @@ function execFunctor(string $functorName, $objInput) : string
             }
         ),
         function (array $match) {
-            return !empty($match) ? 
+            return !empty($match) ?
                 A\concat(
                     '',
                     Constants\FUNCTOR_NAMESPACE,
@@ -295,8 +295,8 @@ function execFunctor(string $functorName, $objInput) : string
 
     eval($toCompile);
 
-    return isset($success) ? 
-        conveyOutput($success) : 
+    return isset($success) ?
+        conveyOutput($success) :
         $error;
 }
 
@@ -327,7 +327,7 @@ function extractFuncArgs(array $fnArgs, array $objInput) : array
 
     $traversal = function (int $init = 0, array $compileArgs = []) use (
         $fnArgs,
-        $objInput, 
+        $objInput,
         $fnArgCount,
         &$traversal
     ) {
@@ -354,7 +354,7 @@ function extractFuncArgs(array $fnArgs, array $objInput) : array
                 '"Expr_Closure"' => function () use ($objInput) {
                     $closure = (new NodeFinder)
                         ->findInstanceOf($objInput, Node\Expr\Closure::class);
-                    
+
                     $closureObj = A\concat(
                         ' = ',
                         '$closureItem',
@@ -407,20 +407,20 @@ function conveyOutput($output) : string
                 '"IO"' => function () use ($output, $printObject) {
                     $val = $output->exec();
                     return A\concat(
-                        ' ', 
-                        '<IO>', 
+                        ' ',
+                        '<IO>',
                         json_encode(is_object($val) ? $printObject($val) : $val)
                     );
                 },
                 '"State"' => function () use ($output, $printObject) {
                     return A\concat(
-                        ' ', 
-                        '<State>', 
+                        ' ',
+                        '<State>',
                         json_encode(
                             A\map(
                                 function ($val) use ($printObject) {
                                     return is_object($val) ? $printObject($val) : $val;
-                                }, 
+                                },
                                 $output->exec()
                             )
                         )
@@ -431,8 +431,8 @@ function conveyOutput($output) : string
                 },
                 '"ListMonad"' => function () use ($output, $printObject) {
                     return A\concat(
-                        ' ', 
-                        '<ListMonad>', 
+                        ' ',
+                        '<ListMonad>',
                         json_encode(
                             A\map(
                                 function ($val) use ($printObject) {
@@ -445,13 +445,13 @@ function conveyOutput($output) : string
                 },
                 '"Writer"' => function () use ($output, $printObject) {
                     return A\concat(
-                        ' ', 
-                        '<Writer>', 
+                        ' ',
+                        '<Writer>',
                         json_encode(
                             A\map(
                                 function ($val) use ($printObject) {
                                     return is_object($val) ? $printObject($val) : $val;
-                                }, 
+                                },
                                 $output->run()
                             )
                         )
@@ -460,8 +460,8 @@ function conveyOutput($output) : string
                 '"Applicative"' => function () use ($output) {
                     $val = $output->getValue();
                     return A\concat(
-                        ' ', 
-                        '<Applicative>', 
+                        ' ',
+                        '<Applicative>',
                         json_encode(is_object($val) ? $printObject($val) : $val)
                     );
                 },
@@ -474,8 +474,8 @@ function conveyOutput($output) : string
                 '"Left"' => function () use ($output, $printObject) {
                     $val = $output->flatMap(A\identity);
                     return A\concat(
-                        ' ', 
-                        '<Left>', 
+                        ' ',
+                        '<Left>',
                         json_encode(is_object($val) ? $printObject($val) : $val)
                     );
                 },
