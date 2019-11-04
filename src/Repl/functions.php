@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * REPL actions
- * 
+ *
  * @author Lochemem Bruno Michael
  * @license Apache-2.0
  */
@@ -24,14 +24,14 @@ use \Clue\React\Stdio\Stdio;
 /**
  * evalStmt
  * parses all REPL input
- * 
+ *
  * evalStmt -> String -> Object -> Object -> Array -> IO()
- * 
+ *
  * @param string        $input
  * @param Stdio         $stdio
  * @param LoopInterface $loop
  * @param array         $history
- * 
+ *
  * @return IO
  */
 const evalStmt      = __NAMESPACE__ . '\\evalStmt';

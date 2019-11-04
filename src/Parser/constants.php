@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * Important REPL state
- * 
+ *
  * @author Lochemem Bruno Michael
  * @license Apache-2.0
  */
@@ -13,14 +13,14 @@ namespace Chemem\Bingo\Functional\Repl\Parser;
 
 /**
  * base namespace
- * 
+ *
  * @var string NSP_BASE
  */
 const NSP_BASE      = 'Chemem\\Bingo\\Functional\\';
 
 /**
  * bingo-functional function namespaces
- * 
+ *
  * @var array NAMESPACES
  */
 const NAMESPACES    = [
@@ -36,21 +36,21 @@ const NAMESPACES    = [
 
 /**
  * PHP code execution directive
- * 
+ *
  * @var string PARSE_EXPR
  */
 const PARSE_EXPR    = 'require __DIR__ . "/vendor/autoload.php"; {expr}';
 
 /**
  * REPL input prompt
- * 
+ *
  * @var string REPL_PROMPT
  */
 const REPL_PROMPT   = '$λ>>> ';
 
 /**
  * REPL help information
- * 
+ *
  * @var array REPL_HELP
  */
 const REPL_HELP     = [
@@ -63,7 +63,7 @@ const REPL_HELP     = [
 
 /**
  * REPL how-to-use information
- * 
+ *
  * @var string REPL_HOW
  */
 const REPL_HOW      = <<<'DOC'
@@ -82,7 +82,7 @@ DOC;
 
 /**
  * REPL colors
- * 
+ *
  * @var array COLORS
  */
 const COLORS        = [
@@ -94,7 +94,7 @@ const COLORS        = [
 
 /**
  * REPL error message templates
- * 
+ *
  * @var array ERRORS
  */
 const ERRORS        = [
