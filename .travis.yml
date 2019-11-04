@@ -2,7 +2,7 @@ language: php
 php:
   - 7.2
   - 7.3
-  - 'nightly'
+  - nightly
 
 before_install: phpenv config-add bfreplconfig.ini
 
