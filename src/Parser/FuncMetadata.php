@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * Function Metadata object
- * 
+ *
  * @author Lochemem Bruno Michael
  * @license Apache-2.0
  */

@@ -197,14 +197,14 @@ function printFuncExpr(string $func, array $args): string
 /**
  * handleExpression
  * parses REPL input expressions
- * 
+ *
  * handleExpression :: Object -> Object -> Object -> Object -> IO()
- * 
+ *
  * @param object        $code
  * @param object        $type
  * @param Stdio         $stdio
  * @param LoopInterface $loop
- * 
+ *
  * @return IO
  */
 const handleExpression       = __NAMESPACE__ . '\\handleExpression';
@@ -270,13 +270,13 @@ function handleExpression(
 /**
  * handleFuncCall
  * parses a function call expression
- * 
+ *
  * handleFuncCall :: (String -> Object) -> (String -> IO()) -> Bool -> IO()
- * 
+ *
  * @param callable  $nodeFinder
  * @param callable  $transform
  * @param bool      $strict
- * 
+ *
  * @return IO
  */
 const handleFuncCall        = __NAMESPACE__ . '\\handleFuncCall';
@@ -310,12 +310,12 @@ function handleFuncCall(
 /**
  * handleAssign
  * parse a variable assignment expression
- * 
+ *
  * handleAssign :: (String -> Object) -> (String -> IO()) -> IO()
- * 
+ *
  * @param callable $nodeFinder
  * @param callable $transform
- * 
+ *
  * @return IO
  */
 const handleAssign          = __NAMESPACE__ . '\\handleAssign';
@@ -345,12 +345,12 @@ function handleAssign(callable $nodeFinder, callable $transform): IO
 /**
  * handleVar
  * prints a variable's contents if assigned a value; an error message otherwise
- * 
+ *
  * handleVar :: (String -> Object) -> (String -> IO()) -> IO()
- * 
+ *
  * @param callable $nodeFinder
  * @param callable $transform
- * 
+ *
  * @return IO
  */
 const handleVar             = __NAMESPACE__ . '\\handleVar';
@@ -367,13 +367,13 @@ function handleVar(callable $nodeFinder, callable $transform): IO
 /**
  * selectCode
  * selectively parses PHP input
- * 
+ *
  * selectCode :: String -> Object -> Object -> IO()
- * 
+ *
  * @param string        $code
  * @param Stdio         $stdio
  * @param LoopInterface $loop
- * 
+ *
  * @return IO
  */
 const selectCode            = __NAMESPACE__ . '\\selectCode';
@@ -408,13 +408,13 @@ function selectCode(string $code, Stdio $stdio, LoopInterface $loop): IO
 /**
  * evalCode
  * executes PHP expression
- * 
+ *
  * evalCode :: String -> Object -> Object -> IO()
- * 
+ *
  * @param string        $stmt
  * @param Stdio         $stdio
  * @param LoopInterface $loop
- * 
+ *
  * @return IO
  */
 const evalCode              = __NAMESPACE__ . '\\evalCode';
@@ -434,12 +434,12 @@ function evalCode(string $stmt, Stdio $stdio, LoopInterface $loop): IO
 /**
  * nodeFinder
  * traverses AST and returns the first instance of a specified node
- * 
+ *
  * nodeFinder :: Object -> String -> Object
- * 
+ *
  * @param object $code
  * @param string $nodeType
- * 
+ *
  * @return object
  */
 const nodeFinder            = __NAMESPACE__ . '\\nodeFinder';
@@ -457,13 +457,13 @@ function nodeFinder(object $code, string $nodeType): object
 /**
  * initProcess
  * performs shell command execution
- * 
+ *
  * initProcess :: String -> Object -> Object -> IO()
- * 
+ *
  * @param string        $expr
  * @param Stdio         $stdio
  * @param LoopInterface $loop
- * 
+ *
  * @return IO
  */
 const initProcess           = __NAMESPACE__ . '\\initProcess';
@@ -494,12 +494,12 @@ function initProcess(string $cmd, Stdio $stdio, LoopInterface $loop): IO
 /**
  * storeAdd
  * store data in APCU cache
- * 
+ *
  * storeAdd :: String -> a -> IO()
- * 
+ *
  * @param string $key
  * @param mixed $data
- * 
+ *
  * @return IO
  */
 const storeAdd              = __NAMESPACE__ . '\\storeAdd';
@@ -512,12 +512,12 @@ function storeAdd(string $key, $val): IO
 /**
  * storeFetch
  * fetch data from APCU cache if it exists; returns default value otherwise
- * 
+ *
  * storeFetch :: String -> String -> IO()
- * 
+ *
  * @param string $key
  * @param mixed $default
- * 
+ *
  * @return IO
  */
 const storeFetch            = __NAMESPACE__ . '\\storeFetch';
@@ -530,9 +530,9 @@ function storeFetch(string $key, string $default = ''): IO
 /**
  * storeClear
  * clear APCU cache
- * 
+ *
  * storeClear :: IO()
- * 
+ *
  * @return IO
  */
 const storeClear            = __NAMESPACE__ . '\\storeClear';
