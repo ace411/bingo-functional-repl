@@ -4,9 +4,10 @@ php:
   - 7.3
   - 'nightly'
 
+before_install: phpenv config-add bfreplconfig.ini
+
 before_script:
   - composer install
-  - echo $'apc.enabled=1\napc.enable_cli=1' >> ~/.phpenv/versions/$(phpenv 5.1)/etc/conf.d/travis.ini
 
 script: vendor/bin/phpunit --coverage-clover=coverage.xml
 
