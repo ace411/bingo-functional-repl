@@ -297,7 +297,7 @@ function handleFuncCall(
     [$function, ]   = $strict ? functionExists($func) : $fnExists($func);
     $ret            = f\compose(
         parseFuncArguments,
-        f\partial(printFuncExpr, $function),
+        f\partial(printFuncExpr, $function)
     );
 
     return IO\IO(
