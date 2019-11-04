@@ -4,7 +4,12 @@ php:
   - 7.3
   - 'nightly'
 
-before_script: composer install
+sudo: enabled
+
+before_script:
+  - sudo pecl install apcu 
+  - composer install
+  - echo $'apc.enabled=1\napc.enable_cli=1' >> ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/travis.ini
 
 script: vendor/bin/phpunit --coverage-clover=coverage.xml
 
