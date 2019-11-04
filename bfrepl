@@ -1,0 +1,94 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * REPL executable file
+ * 
+ * @package bingo-functional-repl
+ * @author Lochemem Bruno Michael
+ * @license Apache 2.0
+ */
+foreach (
+    [
+        __DIR__ . '/../autoload.php',
+        __DIR__ . '/../../autoload.php',
+        __DIR__ . '/../vendor/autoload.php',
+        __DIR__ . '/vendor/autoload.php',
+        __DIR__ . '/../../vendor/autoload.php'
+    ] as $file
+) {
+    if (file_exists($file)) {
+        define('AUTOLOAD_PHP_FILE', $file);
+        break;
+    }    
+}
+if (!defined('AUTOLOAD_PHP_FILE')) {
+     fwrite(STDERR,
+        'You need to set up the project dependencies using the following commands:' . PHP_EOL .
+        'wget http://getcomposer.org/composer.phar' . PHP_EOL .
+        'php composer.phar install' . PHP_EOL
+    );
+    die(1);
+}
+require AUTOLOAD_PHP_FILE;
+
+use \React\EventLoop\Factory;
+use \Clue\React\Stdio\Stdio;
+use \React\Cache\ArrayCache;
+use \Chemem\Bingo\Functional\{
+    Algorithms as f,
+    Functors\Monads\IO,
+    Functors\Monads\State as s
+};
+use \Chemem\Bingo\Functional\Repl\{
+    Repl as r,
+    Printer as p,
+    Parser as pr
+};
+
+set_exception_handler(function ($exp) {
+    $ret = f\compose(
+        f\partialRight(f\partial(f\concat, PHP_EOL, ''), ''),
+        f\partialRight(p\colorOutput, pr\COLORS['error']),
+        IO\IO,
+        IO\_print
+    );
+
+    return $ret($exp->getMessage());
+});
+
+$loop   = Factory::create();
+
+$res    = IO\IO(function () use ($loop) {
+    $stdio  = new Stdio($loop);
+    $stdio->setPrompt(pr\REPL_PROMPT);
+
+    return $stdio;
+})
+    ->map(function (Stdio $stdio) {
+        $stdio->write(p\headerText('bingo functional repl (v0.1.0)', 'by @ace411'));
+        return $stdio;
+    })
+    ->map(function (Stdio $stdio) {
+        $stdio->on('error', function ($error) use ($stdio) {
+            $stdio->end('Sorry, an error occurred!');
+        });
+        
+        return $stdio;
+    })
+    ->map(function (Stdio $stdio) use ($loop) {
+        $stdio->on('data', function (string $line) use ($stdio, $loop) {
+            $input      = rtrim($line, "\r\n");
+            $history    = $stdio->listHistory();
+
+            r\evalStmt($input, $stdio, $loop, $history)->exec();
+            if (!empty($input) && $input !== f\last($history)) {
+                $stdio->addHistory($input);
+            }
+        });
+
+        return $stdio;
+    }); 
+
+$res->exec();
+$loop->run();
