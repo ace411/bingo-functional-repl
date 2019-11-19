@@ -52,7 +52,7 @@
         "bfrepl"
     ],
     "scripts": {
-        "cs": "phpcbf --extensions=php --standard=PSR12",
+        "cs": "phpcbf --ignore=*/vendor/* --extensions=php --standard=PSR12",
         "test": "phpunit -c phpunit.xml.dist"
     }
 }
