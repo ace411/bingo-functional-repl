@@ -334,7 +334,11 @@ function handleAssign(callable $nodeFinder, callable $transform): IO
             return printPhpExpr($expr);
         },
         Node\Expr\FuncCall::class   => function () use ($expr, $nodeFinder) {
-            return handleFuncCall($nodeFinder, f\identity, false)->exec();
+            return handleFuncCall(
+                $nodeFinder, 
+                f\compose(f\partial('str_replace', ';', ''), IO\IO), 
+                false
+            )->exec();
         },
         '_'                         => function () use ($expr) {
             return isset($expr->value) ? $expr->value : printPhpExpr($expr);
