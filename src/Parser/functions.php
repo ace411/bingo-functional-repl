@@ -335,8 +335,8 @@ function handleAssign(callable $nodeFinder, callable $transform): IO
         },
         Node\Expr\FuncCall::class   => function () use ($expr, $nodeFinder) {
             return handleFuncCall(
-                $nodeFinder, 
-                f\compose(f\partial('str_replace', ';', ''), IO\IO), 
+                $nodeFinder,
+                f\compose(f\partial('str_replace', ';', ''), IO\IO),
                 false
             )->exec();
         },
