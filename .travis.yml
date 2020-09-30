@@ -6,6 +6,7 @@ php:
 
 before_script:
   - composer install
+  - pecl install apcu
 
 script: vendor/bin/phpunit --coverage-clover=coverage.xml
 
