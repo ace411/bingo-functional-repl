@@ -10,13 +10,13 @@
     }
   ],
   "require": {
-    "ext-apcu": "~5.1",
+    "ext-apcu": "~5",
     "chemem/bingo-functional": "~1",
     "clue/stdio-react": "~2",
     "php-parallel-lint/php-console-color": "~0",
-    "mmarica/display-table": "~1.0.0",
+    "mmarica/display-table": "~1",
     "nikic/php-parser": "~4",
-    "react/child-process": "~0.6"
+    "react/child-process": "~0"
   },
   "require-dev": {
     "giorgiosironi/eris": "~0",
