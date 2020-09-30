@@ -13,15 +13,15 @@
     "ext-apcu": "~5",
     "chemem/bingo-functional": "~1",
     "clue/stdio-react": "~2",
-    "php-parallel-lint/php-console-color": "~0",
     "mmarica/display-table": "~1",
     "nikic/php-parser": "~4",
+    "php-parallel-lint/php-console-color": "~0",
     "react/child-process": "~0"
   },
   "require-dev": {
+    "friendsofphp/php-cs-fixer": "~2",
     "giorgiosironi/eris": "~0",
-    "phpunit/phpunit": "~8",
-    "friendsofphp/php-cs-fixer": "~2"
+    "phpunit/phpunit": "~8"
   },
   "extra": {
     "branch-alias": {
