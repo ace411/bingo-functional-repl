@@ -6,6 +6,12 @@
 
 A simple REPL for the bingo-functional library.
 
+[![Build Status](https://travis-ci.org/ace411/bingo-functional-repl.svg?branch=master)](https://travis-ci.org/ace411/bingo-functional-repl)
+[![License](https://poser.pugx.org/chemem/bingo-functional-repl/license)](//packagist.org/packages/chemem/bingo-functional-repl)
+[![composer.lock](https://poser.pugx.org/chemem/bingo-functional-repl/composerlock)](//packagist.org/packages/chemem/bingo-functional-repl)
+[![Latest Stable Version](https://poser.pugx.org/chemem/bingo-functional-repl/v)](//packagist.org/packages/chemem/bingo-functional-repl)
+[![Latest Unstable Version](https://poser.pugx.org/chemem/bingo-functional-repl/v/unstable)](//packagist.org/packages/chemem/bingo-functional-repl)
+
 ## Requirements
 
 - PHP 7.4 or greater
