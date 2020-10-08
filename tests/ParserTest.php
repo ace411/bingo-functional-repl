@@ -154,6 +154,36 @@ class ParserTest extends \PHPUnit\Framework\TestCase
   /**
    * @test
    */
+  public function modifyNodeNamePrependsLibraryArtifactNamespaceToIdentifier()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'map',
+          'filter',
+          'identity',
+          'isArrayOf',
+          'Collection::from',
+          'maybe',
+        )
+      )
+      ->then(function (string $name) {
+        $modify     = f\compose(p\generateAst, fn ($ast) => (
+          p\modifyNodeName($ast[0]->expr->name)
+        ));
+        $identifier = $modify($name);
+
+        $this->assertIsObject($identifier);
+        $this->assertTrue(
+          $identifier instanceof \PhpParser\Node\Name ||
+          $identifier instanceof \PhpParser\Node\Identifier
+        );
+      });
+  }
+
+  /**
+   * @test
+   */
   public function storeAddStoresVariableDataInApcuCache()
   {
     $this
