@@ -1,547 +1,547 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * REPL parser functions
- *
- * @author Lochemem Bruno Michael
- * @license Apache-2.0
+ * 
+ * @package bingo-functional-repl
+ * @author  Lochemem Bruno Michael
+ * @license Apache-2.0 
  */
+
+declare(strict_types=1);
 
 namespace Chemem\Bingo\Functional\Repl\Parser;
 
-use \PhpParser\{NodeDumper, Error, ParserFactory};
-use \React\EventLoop\LoopInterface;
 use \PhpParser\{
-    Node,
-    NodeFinder,
-    PrettyPrinter
+  Node,
+  Error,
+  NodeDumper,
+  NodeFinder,
+  PrettyPrinter,
+  ParserFactory,
+  NodeTraverser,
+  NodeVisitorAbstract,
 };
-use \Chemem\Bingo\Functional\{
-    Algorithms as f,
-    PatternMatching as p,
-    Functors\Monads\State as s,
-    Functors\Monads as m,
-    Functors\Monads\IO
-};
-use \Chemem\Bingo\Functional\Repl\Printer as pr;
 use \Clue\React\Stdio\Stdio;
+use \Chemem\Bingo\Functional\{
+  Algorithms as f,
+  PatternMatching as p,
+  Functors\Monads\State,
+  Functors\Monads\IO,
+  Functors\Maybe,
+};
+use \Chemem\Bingo\Functional\{Repl, Repl\Printer as pp};
+use \React\{
+  ChildProcess\Process,
+  EventLoop\LoopInterface
+};
 
 /**
  * generateAst
- * create AST from parsable PHP syntax
- *
+ * Tokenizes PHP code
+ * 
  * generateAst :: String -> Array
- *
+ * 
  * @param string $code
- *
- * @return array
  */
-const generateAst           = __NAMESPACE__ . '\\generateAst';
-
 function generateAst(string $code): array
 {
-    return (new ParserFactory())
-        ->create(ParserFactory::PREFER_PHP7)
-        ->parse(f\concat(' ', '<?php', $code, '?>'));
+  $ast = fn (string $input): array => (new ParserFactory)
+    ->create(ParserFactory::PREFER_PHP7)
+    ->parse(f\concat(' ', '<?php', $input, '?>'));
+  
+  return f\toException($ast, fn ($_): array => $ast('identity("")'))($code);
 }
+const generateAst                   = __NAMESPACE__ . '\\generateAst';
+
+/**
+ * commaSeparateMetadata
+ * outputs function and object metadata list as comma-separated string
+ * 
+ * commaSeparateMetadata :: Array -> String
+ * 
+ * @param array $data
+ */
+function commaSeparateMetadata(array $data): string
+{
+  $separate = f\compose(
+    f\partial(f\map, fn (object $param): string => $param->name),
+    fn (array $params): string => f\concat(', ', ...$params),
+  );
+
+  return $separate($data);
+}
+const commaSeparateMetadata         = __NAMESPACE__ . '\\commaSeparateMetadata';
+
+/**
+ * getUtilityMetadata
+ * get function or object metadata
+ * 
+ * getUtilityMetadata :: String -> Array 
+ * 
+ * @param string $utility
+ */
+function getUtilityMetadata(string $utility): array
+{
+  $ref = \function_exists($utility) ?
+    'function' :
+    (\class_exists($utility) ? 'class' : 'none');
+
+  return p\patternMatch([
+    '"function"'  => fn () => getFunctionMetadata($utility),
+    '"class"'     => fn () => getClassMetadata($utility),
+    '_'           => fn () => [],
+  ], $ref);
+}
+const getUtilityMetadata            = __NAMESPACE__ . '\\getUtilityMetadata';
 
 /**
  * getFunctionMetadata
- * stores function property information in object
- *
- * getFunctionMetadata :: String -> Object
- *
+ * outputs PHP function metadata as array
+ * 
+ * getFunctionMetadata :: String -> Array
+ * 
  * @param string $function
- *
- * @return FuncMetadata
  */
-const getFunctionMetadata   = __NAMESPACE__ . '\\getFunctionMetadata';
-
-function getFunctionMetadata(string $function): FuncMetadata
+function getFunctionMetadata(string $function): array
 {
-    $ref                = (new \ReflectionFunction($function));
-    $meta               = new FuncMetadata();
+  $ref      = new \ReflectionFunction($function);
+  $retType  = $ref->getReturnType();
 
-    $meta->paramCount   = $ref->getNumberOfParameters();
-    $meta->params       = json_decode(json_encode($ref->getParameters()), true);
-
-    return $meta;
+  return [
+    'paramCount'  => $ref->getNumberOfParameters(),
+    'parameters'  => commaSeparateMetadata($ref->getParameters()),
+    'returnType'  => \is_null($retType) ? 'any' : $retType->getName(),
+  ];
 }
+const getFunctionMetadata           = __NAMESPACE__ . '\\getFunctionMetadata';
 
 /**
- * printFuncMetadata
- * evaluates to a tabular representation of function metadata
- *
- * printFuncMetadata :: String -> String
- *
- * @param string $function
- *
- * @return string
+ * getClassMetadata
+ * outputs PHP class metadata as array
+ * 
+ * getClassMetadata :: String -> Array
+ * 
+ * @param string $class
  */
-const printFuncMetadata     = __NAMESPACE__ . '\\printFuncMetadata';
-
-function printFuncMetadata(string $func): string
+function getClassMetadata(string $class): array
 {
-    $ret = f\compose(getFunctionMetadata, function (FuncMetadata $data) use ($func) {
-        $paramHandler = f\compose(f\flatten, f\partial('implode', ', '));
+  $ref            = new \ReflectionClass($class);
+  $commaSeparate  = f\compose('array_values', commaSeparateMetadata);
 
-        return pr\printer(
-            ['#', 'function', 'argCount', 'argParams'],
-            [['1', $func, $data->paramCount, $paramHandler($data->params)]],
-            [2, 0]
-        );
-    });
-
-    return $ret($func);
+  return [
+    'implements'  => $commaSeparate($ref->getInterfaces()),
+    'methods'     => $commaSeparate($ref->getMethods()),
+  ];
 }
+const getClassMetadata              = __NAMESPACE__ . '\\getClassMetadata';
 
 /**
- * functionExists
- * outputs two-value list useful in verifying that function exists in library
- *
- * functionExists :: String -> Array
- *
- * @param string $function
- *
- * @return array
+ * isLibraryArtifact
+ * checks if artifact is a bingo-functional utility
+ * 
+ * isLibraryArtifact :: String -> Array
+ * 
+ * @param string $artifact
  */
-const functionExists        = __NAMESPACE__ . '\\functionExists';
-
-function functionExists(string $function): array
+function isLibraryArtifact(string $artifact): array
 {
-    $ret = s\gets(function (string $func): string {
-        return f\fold(function (string $final, string $nspc) use ($func) {
-            $full = f\concat('', $nspc, $func);
-            $final .= !function_exists($full) ? '' : $full;
-            return $final;
-        }, NAMESPACES, '');
-    });
+  $check = State\gets(fn (string $func) => f\fold(
+    function (array $acc, string $namespace) use ($func): array {
+      $fullname = f\concat('', $namespace, $func);
 
-    return s\evalState($ret, null)($function);
+      $check    = \function_exists($fullname) || \class_exists($fullname);
+      if ($check) {
+        $acc = [$check, $fullname];
+      }
+      
+      return $acc;
+    },
+    Repl\BASE_NAMESPACES,
+    []
+  ));
+
+  return State\evalState($check, null)($artifact);
 }
+const isLibraryArtifact       = __NAMESPACE__ . '\\isLibraryArtifact';
 
 /**
- * printPhpExpr
- * converts AST expression object to code
- *
- * printPhpExpr :: Object -> String
- *
- * @param object $expr
- *
- * @return string
- */
-const printPhpExpr          = __NAMESPACE__ . '\\printPhpExpr';
-
-function printPhpExpr(object $expr): string
-{
-    return (new PrettyPrinter\Standard())->prettyPrintExpr($expr);
-}
-
-/**
- * parseFuncArguments
- * converts function arguments to usable code fragments
- *
- * parseFuncArguments :: Array -> Array
- *
- * @param array $args
- *
- * @return array
- */
-const parseFuncArguments    = __NAMESPACE__ . '\\parseFuncArguments';
-
-function parseFuncArguments(array $args): array
-{
-    return f\map(function (object $node) {
-        $val = $node->value;
-        $ret = f\compose(
-            f\partial(p\patternMatch, [
-                Node\Expr\Variable::class   => function () use ($val) {
-                    return storeFetch($val->name, printPhpExpr($val))->exec();
-                },
-                '_'                         => function () use ($val) {
-                    return printPhpExpr($val);
-                }
-            ]),
-            f\partial('str_replace', '\'', '"')
-        );
-
-        return $ret($val);
-    }, $args);
-}
-
-/**
- * printFuncExpr
- * combines a function name and its arguments into a function call expression
- *
- * printFuncExpr :: String -> Array -> String
- *
- * @param string $func
- * @param array $args
- *
- * @return string
- */
-const printFuncExpr         = __NAMESPACE__ . '\\printFuncExpr';
-
-function printFuncExpr(string $func, array $args): string
-{
-    $ret = f\compose(
-        f\partial('implode', ','),
-        f\partialRight(f\partial(f\concat, '', '(', $func, '('), '));')
-    );
-
-    return $ret($args);
-}
-
-/**
- * handleExpression
- * parses REPL input expressions
- *
- * handleExpression :: Object -> Object -> Object -> Object -> IO()
- *
- * @param object        $code
- * @param object        $type
- * @param Stdio         $stdio
- * @param LoopInterface $loop
- *
- * @return IO
- */
-const handleExpression       = __NAMESPACE__ . '\\handleExpression';
-
-function handleExpression(
-    object $code,
-    object $type,
-    Stdio $stdio,
-    LoopInterface $loop
-): IO {
-    $finder = f\partial(nodeFinder, $code);
-    
-    return p\patternMatch([
-        Node\Expr\FuncCall::class   => function () use (
-            $finder,
-            $stdio,
-            $loop
-        ) {
-            return handleFuncCall(
-                $finder,
-                f\partialRight(evalCode, $loop, $stdio)
-            );
-        },
-        Node\Expr\Assign::class     => function () use ($finder, $stdio) {
-            return handleAssign($finder, function (bool $result) use ($stdio): IO {
-                $output = function (string $msg, string $style): string {
-                    $ret = f\compose(
-                        f\partialRight(pr\colorOutput, $style),
-                        pr\prefixOutput
-                    );
-
-                    return $ret($msg);
-                };
-
-                $stdio->write(
-                    $result ?
-                        $output('Assign', 'underline') :
-                        $output('No Assign', COLORS['error'])
-                );
-
-                return IO\IO($stdio);
-            });
-        },
-        Node\Expr\Variable::class   => function () use ($stdio, $finder, $loop) {
-            return handleVar($finder, function (string $val) use ($loop, $stdio) {
-                $ret = f\compose(
-                    f\partialRight(f\partial(f\concat, '', '('), ');'),
-                    f\partialRight(evalCode, $loop, $stdio)
-                );
-
-                return $ret($val);
-            });
-        },
-        '_'                         => function () use ($stdio) {
-            return IO\IO(function () use ($stdio) {
-                $stdio->write(pr\printError('repl', 'Cannot parse the operation'));
-                return $stdio;
-            });
-        }
-    ], $type);
-}
-
-/**
- * handleFuncCall
- * parses a function call expression
- *
- * handleFuncCall :: (String -> Object) -> (String -> IO()) -> Bool -> IO()
- *
- * @param callable  $nodeFinder
- * @param callable  $transform
- * @param bool      $strict
- *
- * @return IO
- */
-const handleFuncCall        = __NAMESPACE__ . '\\handleFuncCall';
-
-function handleFuncCall(
-    callable $nodeFinder,
-    callable $transform,
-    bool $strict = true
-): IO {
-    $stmts          = $nodeFinder(Node\Expr\FuncCall::class);
-    $func           = ($stmts->name)->getLast();
-    $fnExists       = s\evalState(s\gets(function (string $function) {
-        return function_exists($function) ?
-            $function :
-            f\head(functionExists($function));
-    }), null);
-
-    [$function, ]   = $strict ? functionExists($func) : $fnExists($func);
-    $ret            = f\compose(
-        parseFuncArguments,
-        f\partial(printFuncExpr, $function)
-    );
-
-    return IO\IO(
-        !empty($function) ?
-            $ret($stmts->args) :
-            f\concat('', '("', pr\printError('nexists', $func), '");')
-    )->bind($transform);
-}
-
-/**
- * handleAssign
- * parse a variable assignment expression
- *
- * handleAssign :: (String -> Object) -> (String -> IO()) -> IO()
- *
- * @param callable $nodeFinder
- * @param callable $transform
- *
- * @return IO
- */
-const handleAssign          = __NAMESPACE__ . '\\handleAssign';
-
-function handleAssign(callable $nodeFinder, callable $transform): IO
-{
-    $stmts  = $nodeFinder(Node\Expr\Assign::class);
-    $expr   = $stmts->expr;
-    $var    = ($stmts->var)->name;
-
-    return storeAdd($var, p\patternMatch([
-        Node\Expr\Closure::class    => function () use ($expr) {
-            return printPhpExpr($expr);
-        },
-        Node\Expr\Array_::class     => function () use ($expr) {
-            return printPhpExpr($expr);
-        },
-        Node\Expr\FuncCall::class   => function () use ($expr, $nodeFinder) {
-            return handleFuncCall(
-                $nodeFinder,
-                f\compose(f\partial('str_replace', ';', ''), IO\IO),
-                false
-            )->exec();
-        },
-        '_'                         => function () use ($expr) {
-            return isset($expr->value) ? $expr->value : printPhpExpr($expr);
-        }
-    ], $expr))->bind($transform);
-}
-
-/**
- * handleVar
- * prints a variable's contents if assigned a value; an error message otherwise
- *
- * handleVar :: (String -> Object) -> (String -> IO()) -> IO()
- *
- * @param callable $nodeFinder
- * @param callable $transform
- *
- * @return IO
- */
-const handleVar             = __NAMESPACE__ . '\\handleVar';
-
-function handleVar(callable $nodeFinder, callable $transform): IO
-{
-    $stmts  = $nodeFinder(Node\Expr\Variable::class);
-    $name   = $stmts->name;
-
-    return storeFetch($name, f\concat('', '"', $name, ' was not declared"'))
-        ->bind($transform);
-}
-
-/**
- * selectCode
- * selectively parses PHP input
- *
- * selectCode :: String -> Object -> Object -> IO()
- *
+ * parseCode
+ * parses REPL input as PHP code
+ * 
+ * parseCode :: String -> Object -> Object -> IO ()
+ * 
  * @param string        $code
  * @param Stdio         $stdio
  * @param LoopInterface $loop
- *
- * @return IO
  */
-const selectCode            = __NAMESPACE__ . '\\selectCode';
+function parseCode(
+  string $code,
+  Stdio $stdio,
+  LoopInterface $loop
+): IO {
+  $node = f\head(generateAst(empty($code) ? '""' : $code));
+  $expr = f\pluck($node->jsonSerialize(), 'expr');
+  
+  return p\patternMatch([
+    // asynchronously evaluate PHP expression
+    Node\Stmt\Expression::class => fn () => evalExpression($node, $expr, $stdio, $loop),
+    // output non-parsable error for non-expressions
+    '_'                         => fn () => Repl\stdioWrite(
+      $stdio,
+      pp\printError('nparsable', f\concat('', '{', $code, '}'))
+    ),
+  ], $node);
+}
+const parseCode                     = __NAMESPACE__ . '\\parseCode';
 
-function selectCode(string $code, Stdio $stdio, LoopInterface $loop): IO
+/**
+ * evalExpression
+ * selectively evaluate PHP expressions
+ * 
+ * evalExpression :: Object -> Object -> Object -> Object -> IO ()
+ * 
+ * @param Node          $node
+ * @param Node          $expr
+ * @param Stdio         $stdio
+ * @param LoopInterface $loop
+ */
+function evalExpression(
+  Node $node, // expression object
+  Node $expr, // expression type
+  Stdio $stdio,
+  LoopInterface $loop
+): IO {
+  $write  = f\partial(Repl\stdioWrite, $stdio);
+  $concat = f\partialRight(
+    f\partial(f\concat, '', '[', '"PhpParser","Node","Expr",'),
+    ']',
+  );
+
+  return p\patternMatch([
+    // parse static method calls
+    $concat('"StaticCall"')   => fn () => evalFunctionCall($node, $stdio, $loop),
+    // parse regular method calls
+    $concat('"MethodCall"')   => fn () => evalFunctionCall($node, $stdio, $loop),
+    // parse binary expressions (add, divide, subtract, concat etc...)
+    $concat('"BinaryOp",_')   => fn () => evalFunctionCall($node, $stdio, $loop),
+    // parse function calls
+    $concat('"FuncCall"')     => fn () => evalFunctionCall($node, $stdio, $loop),
+    // parse variable assignments arbitrarily
+    $concat('"Assign"')       => fn () => evalAssign($node, $stdio),
+    // dump stored variable contents
+    $concat('"Variable"')     => fn () => evalVarDump($node, $stdio, $loop),
+    // everything else
+    '_'                       => fn () => $write(pp\printError('nparsable', prettyPrint([$node]))),
+  ], \explode('\\', (new \ReflectionClass($expr))->getName()));
+}
+const evalExpression                = __NAMESPACE__ . '\\evalExpression';
+
+/**
+ * findFirstInstanceOfNode
+ * outputs first instance of specific AST node
+ * 
+ * findFirstInstanceOfNode :: Object -> String -> Object
+ * 
+ * @param Node    $node
+ * @param string  $nodeType
+ */
+function findFirstInstanceOfNode(Node $node, string $nodeType): object
 {
-    [$instance, ]   = s\evalState(s\gets(f\head), null)(generateAst($code));
-    $err            = IO\IO(function () use (&$stdio): callable {
-        return function (string $msg) use (&$stdio): Stdio {
-            $stdio->write($msg);
-            return $stdio;
-        };
-    });
+  $finder = f\compose(
+    f\partial(f\extend, [$node]),
+    f\partial('call_user_func_array', [new NodeFinder, 'findFirstInstanceOf'])
+  );
 
-    return !$instance ?
-        $err->ap(IO\IO('Cannot parse empty input')) :
-        p\patternMatch([
-            Node\Stmt\Expression::class => function () use ($code, $loop, $stdio, $instance) {
-                return handleExpression(
-                    $instance,
-                    f\pluck($instance->jsonSerialize(), 'expr'),
-                    $stdio,
-                    $loop
-                );
-            },
-            '_'                         => function () use ($err) {
-                return $err->ap(IO\IO('Cannot parse non-expression'));
+  return $finder([$nodeType]);
+}
+const findFirstInstanceOfNode       = __NAMESPACE__ . '\\findFirstInstanceOfNode';
+
+/**
+ * replaceVariable
+ * replaces variable with a corresponding value stored in the apcu cache
+ * 
+ * replaceVariable :: Object -> Object
+ * 
+ * @param Node $node
+ */
+function replaceVariable(Node $node): Node
+{
+  return storeFetchByVar($node->name) // fetch from APCU
+    ->map(function ($res): Node {
+      $ret = f\compose(generateAst, f\head);
+
+      return $ret($res === false || \is_null($res) ? 'null' : $res);
+    })
+    ->exec();
+}
+const replaceVariable                     = __NAMESPACE__ . '\\replaceVariable';
+
+/**
+ * modifyNodeName
+ * prepends bingo-functional artifact namespace to artifact identifier
+ * 
+ * modifyNodeName :: Object -> Object
+ * 
+ * @param Node $node
+ */
+function modifyNodeName(Node $node): Node
+{
+  $handler = function (Node $node): Node {
+    $funcName   = $node->toString();
+    $funcCheck  = isLibraryArtifact($funcName);
+    $meta       = f\head($funcCheck);
+
+    // return node full name or original, unaltered node
+    return empty($meta) ? $node : new Node\Name(f\last($meta));
+  };
+
+  return f\toException($handler, fn ($_): Node => $node)($node);
+}
+const modifyNodeName                    = __NAMESPACE__ . '\\modifyNodeName';
+
+/**
+ * customTraverser
+ * modifies a generated AST with custom rules
+ * 
+ * customTraverser :: Object
+ * 
+ * @return NodeTraverser
+ */
+function customTraverser(): NodeTraverser
+{
+  $traverser = new NodeTraverser;
+  $traverser
+    ->addVisitor(
+      new class extends NodeVisitorAbstract {
+        public function leaveNode(Node $node): object
+        {
+          // return full artifact name if an entity is indeed a library artifact
+          if ($node instanceof Node\Name) {
+            return modifyNodeName($node);
+          }
+
+          // check if the node is a function argument
+          if ($node instanceof Node\Arg) {
+            $argType = $node->value;
+            
+            if ($argType instanceof Node\Expr\Variable) {
+              return replaceVariable($node->value);
             }
-        ], $instance);
-}
+          }
 
-/**
- * evalCode
- * executes PHP expression
- *
- * evalCode :: String -> Object -> Object -> IO()
- *
- * @param string        $stmt
- * @param Stdio         $stdio
- * @param LoopInterface $loop
- *
- * @return IO
- */
-const evalCode              = __NAMESPACE__ . '\\evalCode';
+          // handle variables in method calls
+          if ($node instanceof Node\Expr\MethodCall) {
+            $var = $node->var;
+            if ($var instanceof Node\Expr\Variable) {
+              return new Node\Expr\MethodCall(
+                replaceVariable($var)->expr,
+                $node->name,
+                $node->args
+              );
+            }
+          }
 
-function evalCode(string $stmt, Stdio $stdio, LoopInterface $loop): IO
-{
-    $expr = f\compose(
-        f\partial(f\concat, '', 'print_r'),
-        f\partialRight(f\partial('str_replace', '{expr}'), PARSE_EXPR)
+          return $node;
+        }
+      }
     );
 
-    return IO\IO($expr($stmt))
-        ->map(f\partialRight(f\partial(f\concat, '', 'php -r \''), '\''))
-        ->bind(f\partialRight(initProcess, $loop, $stdio));
+  return $traverser;
 }
+const customTraverser         = __NAMESPACE__ . '\\customTraverser';
 
 /**
- * nodeFinder
- * traverses AST and returns the first instance of a specified node
- *
- * nodeFinder :: Object -> String -> Object
- *
- * @param object $code
- * @param string $nodeType
- *
- * @return object
+ * prettyPrint
+ * pretty print a PHP expression from an AST
+ * 
+ * prettyPrint :: Array -> String
+ * 
+ * @param array $expr
  */
-const nodeFinder            = __NAMESPACE__ . '\\nodeFinder';
-
-function nodeFinder(object $code, string $nodeType): object
+function prettyPrint(array $expr): string
 {
-    $ret = f\compose(
-        f\partial(f\extend, [$code]),
-        f\partial('call_user_func_array', [new NodeFinder(), 'findFirstInstanceOf'])
-    );
+  $printer = new PrettyPrinter\Standard;
 
-    return $ret([$nodeType]);
+  return $printer->prettyPrint($expr);
 }
+const prettyPrint                   = __NAMESPACE__ . '\\prettyPrint';
 
 /**
- * initProcess
- * performs shell command execution
- *
- * initProcess :: String -> Object -> Object -> IO()
- *
- * @param string        $expr
+ * evalFunctionCall
+ * execute a function call expression
+ * 
+ * evalFunctionCall :: Object -> Object -> Object -> IO ()
+ * 
+ * @param Node          $node
  * @param Stdio         $stdio
  * @param LoopInterface $loop
- *
- * @return IO
  */
-const initProcess           = __NAMESPACE__ . '\\initProcess';
+function evalFunctionCall(
+  Node $node,
+  Stdio $stdio,
+  LoopInterface $loop
+): IO {
+  return phpExec(
+    prettyPrint(customTraverser()->traverse([$node])),
+    $stdio,
+    $loop
+  );
+}
+const evalFunctionCall              = __NAMESPACE__ . '\\evalFunctionCall';
 
-function initProcess(string $cmd, Stdio $stdio, LoopInterface $loop): IO
+/**
+ * evalAssign
+ * execute an assignment operation and store the assigned value in the APCU cache
+ * 
+ * evalAssign :: Object -> Object -> IO ()
+ * 
+ * @param Node  $node
+ * @param Stdio $stdio
+ */
+function evalAssign(Node $node, Stdio $stdio): IO
 {
-    return IO\IO(function () use ($cmd, $loop, &$stdio) {
-        $proc = new \React\ChildProcess\Process($cmd);
-        $proc->start($loop);
+  $assign   = findFirstInstanceOfNode($node, Node\Expr\Assign::class);
+  $success  = f\compose(
+    f\partialRight(f\pluck, 'success'),
+    f\partial(pp\colorOutput, 'Success')
+  );
 
-        $proc->stdout->on('data', function (string $result) use (&$stdio) {
-            $stdio->write(pr\prefixOutput($result));
-        });
+  return storeAdd(
+    $assign->var->name,
+    prettyPrint(customTraverser()->traverse([$assign->expr]))
+  )->bind(fn (bool $status): IO => Repl\stdioWrite(
+    $stdio,
+    $status ?
+      $success(Repl\REPL_COLORS) :
+      pp\printError('nexecutable', 'Could not assign')
+  ));
+}
+const evalAssign                    = __NAMESPACE__ . '\\evalAssign';
 
-        $proc->stdout->on('error', function (\Error $exp) use (&$stdio) {
-            $err = f\compose(
-                f\partial('str_replace', PHP_EOL, ''),
-                f\partial(pr\printWarning, 'repl')
-            );
+/**
+ * evalVarDump
+ * dump a variable's contents
+ * 
+ * evalVarDump :: Object -> Object -> Object -> IO ()
+ * 
+ * @param Node          $node
+ * @param Stdio         $stdio
+ * @param LoopInterface $loop
+ */
+function evalVarDump(
+  Node $node,
+  Stdio $stdio,
+  LoopInterface $loop
+): IO {
+  $var  = findFirstInstanceOfNode($node, Node\Expr\Variable::class);
 
-            $stdio->write($err($exp->getMessage()));
-        });
+  return storeFetchByVar($var->name)
+    ->bind(fn ($res): IO => !$res ?
+      Repl\stdioWrite(
+        $stdio,
+        pp\printError('nexists', f\concat('', '$', $var->name))
+      ) :
+      phpExec($res, $stdio, $loop)
+    );
+}
+const evalVarDump                   = __NAMESPACE__ . '\\evalVarDump';
 
-        return $stdio;
+/**
+ * storeAdd function
+ * store data in apcu cache
+ * 
+ * storeAdd :: String -> String -> IO ()
+ * 
+ * @param string $varName
+ * @param string $expr
+ */
+function storeAdd(string $varName, string $expr): IO
+{
+  return IO\IO(fn () => \apcu_exists($varName) ? false : \apcu_store($varName, $expr));
+}
+const storeAdd                      = __NAMESPACE__ . '\\storeAdd';
+
+/**
+ * storeFetchByVar function
+ * fetch value assigned to variable from apcu cache
+ * 
+ * storeFetchByVar :: String -> IO ()
+ * 
+ * @param string $varName
+ */
+function storeFetchByVar(string $varName = ''): IO
+{
+  return IO\IO(fn () => \apcu_exists($varName) ? \apcu_fetch($varName) : null);
+}
+const storeFetchByVar               = __NAMESPACE__ . '\\storeFetchByVar';
+
+/**
+ * execCommand
+ * execute a PHP command
+ * 
+ * execCommand :: String -> Object -> Object -> IO ()
+ * 
+ * @param string        $code
+ * @param Stdio         $stdio
+ * @param LoopInterface $loop
+ */
+function execCommand(
+  string $code,
+  Stdio $stdio,
+  LoopInterface $loop
+): IO {
+  return IO\IO(function () use ($code, &$stdio, $loop): Stdio {
+    $prefix = f\partial(f\concat, ' ', '=>');
+    $proc   = new Process($code);
+    $proc->start($loop);
+
+    // asynchronously write the result of the process to STDOUT
+    $proc->stdout->on('data', function (string $data) use (
+      &$stdio,
+      $prefix
+    ) {
+      $stdio->write($prefix($data));
     });
+
+    // asynchronously write process error to STDERR
+    $proc->stdout->on('error', function (\Throwable $err) use (
+      &$stdio,
+      $prefix
+    ) {
+      $print = f\compose(
+        f\partialRight(f\pluck, 'error'),
+        f\partial(pp\colorOutput, $err->getMessage()),
+        $prefix
+      );
+      $stdio->write($print(Repl\REPL_COLORS));
+    });
+
+    return $stdio;
+  });
 }
+const execCommand                   = __NAMESPACE__ . '\\execCommand';
 
 /**
- * storeAdd
- * store data in APCU cache
- *
- * storeAdd :: String -> a -> IO()
- *
- * @param string $key
- * @param mixed $data
- *
- * @return IO
+ * phpExec
+ * execute PHP code in command-line
+ * 
+ * phpExec :: String -> Object -> Object -> IO ()
+ * 
+ * @param string        $code
+ * @param Stdio         $stdio
+ * @param LoopInterface $loop
  */
-const storeAdd              = __NAMESPACE__ . '\\storeAdd';
+function phpExec(
+  string $code,
+  Stdio $stdio,
+  LoopInterface $loop
+): IO {
+  $exec = f\compose(
+    pp\genCmdDirective,
+    f\partialRight(execCommand, $loop, $stdio)
+  );
 
-function storeAdd(string $key, $val): IO
-{
-    return IO\IO(apcu_add($key, $val));
+  return $exec($code);
 }
-
-/**
- * storeFetch
- * fetch data from APCU cache if it exists; returns default value otherwise
- *
- * storeFetch :: String -> String -> IO()
- *
- * @param string $key
- * @param mixed $default
- *
- * @return IO
- */
-const storeFetch            = __NAMESPACE__ . '\\storeFetch';
-
-function storeFetch(string $key, string $default = ''): IO
-{
-    return IO\IO(apcu_exists($key) ? apcu_fetch($key) : $default);
-}
-
-/**
- * storeClear
- * clear APCU cache
- *
- * storeClear :: IO()
- *
- * @return IO
- */
-const storeClear            = __NAMESPACE__ . '\\storeClear';
-
-function storeClear(): IO
-{
-    return IO\IO(apcu_clear_cache());
-}
+const phpExec                       = __NAMESPACE__ . '\\phpExec';

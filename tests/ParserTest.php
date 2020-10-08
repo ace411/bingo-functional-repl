@@ -4,118 +4,329 @@ declare(strict_types=1);
 
 namespace Chemem\Bingo\Functional\Repl\Tests;
 
+\error_reporting(0);
+
 use \Eris\Generator;
-use \PhpParser\Node\Expr\FuncCall;
-use \Chemem\Bingo\Functional\{
-    Algorithms as f,
-    Functors\Monads\IO
+use Chemem\Bingo\Functional\{
+  Repl\Parser as p,
+  Algorithms as f,
+  Functors\Monads\State,
+  Functors\Monads\IO,
 };
-use Chemem\Bingo\Functional\Repl\Parser as pr;
 
 class ParserTest extends \PHPUnit\Framework\TestCase
 {
-    use \Eris\TestTrait;
+  use \Eris\TestTrait;
 
-    public function testGenerateAstOutputsSyntaxTree()
-    {
-        $this->forAll(Generator\elements('echo 12', 'add(12, 13)', '$x = 3'))->then(function (string $code) {
-            $ast = pr\generateAst($code);
+  public function tearDown(): void
+  {
+    \apcu_clear_cache();
+  }
 
-            $this->assertIsArray($ast);
-        });
-    }
+  /**
+   * @test
+   */
+  public function generateAstCreatesAbstractSyntaxTree()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'echo 12',
+          'fn ($x) => $x ** 2;',
+          'array_merge(range(1, 4), range(5, 7))',
+          ''
+        )
+      )
+      ->then(function (string $code) {
+        $ast = p\generateAst($code);
 
-    public function testGetFunctionMetadataYieldsFunctionInformation()
-    {
-        $this->forAll(Generator\elements('strtoupper', 'strtolower', 'json_encode', 'json_decode'))->then(function (string $function) {
-            $data = pr\getFunctionMetadata($function);
+        $this->assertIsArray($ast);
+        if (!empty($ast)) {
+          $expr = f\head($ast);
 
-            $this->assertIsObject($data);
-            $this->assertInstanceOf(pr\FuncMetadata::class, $data);
-            $this->assertIsArray($data->params);
-            $this->assertIsInt($data->paramCount);
-        });
-    }
+          $this->assertIsObject($expr);
+          $this->assertInstanceOf(\PhpParser\Node\Stmt::class, $expr);
+        }
+      });
+  }
 
-    public function testFunctionExistsOutputsIntelligibleBinaryState()
-    {
-        $this->forAll(Generator\elements('map', 'json_encode', 'json_decode'))->then(function (string $func) {
-            [$nspcName, $regName] = pr\functionExists($func);
+  /**
+   * @test
+   */
+  public function getFunctionMetadataOutputsFunctionReflectionData()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'is_array',
+          f\identity,
+          f\keysExist,
+          f\map,
+        )
+      )
+      ->then(function (string $func) {
+        $meta = p\getFunctionMetadata($func);
 
-            $this->assertIsString($nspcName);
-            $this->assertIsString($regName);
-        });
-    }
+        $this->assertIsArray($meta);
+        $this->assertTrue(f\keysExist($meta, 'paramCount', 'parameters', 'returnType'));
+      });
+  }
 
-    public function testPrintPhpExprOutputsAstEquivalentCode()
-    {
-        $this->forAll(Generator\elements('$x = 12', 'strtoupper("foo")'))->then(function (string $code) {
-            $ret    = f\compose(pr\generateAst, self::exprFromTree, pr\printPhpExpr);
-            $expr   = $ret($code);
+  /**
+   * @test
+   */
+  public function getClassMetadataOutputsClassReflectionData()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          \StdClass::class,
+          IO::class,
+          State::class,
+        )
+      )
+      ->then(function (string $class) {
+        $meta = p\getClassMetadata($class);
 
-            $this->assertIsString($expr);
-        });
-    }
+        $this->assertIsArray($meta);
+        $this->assertTrue(f\keysExist($meta, 'implements', 'methods'));
+      });
+  }
 
-    public function testParseFuncArgumentsFormatsFunctionArguments()
-    {
-        $this->forAll(Generator\elements('map(function ($x) { return $x + 2; }, [3, 7])', 'identity(12)'))->then(function (string $funcCall) {
-            $expr = f\compose(pr\generateAst, self::exprFromTree, f\partialRight(pr\nodeFinder, FuncCall::class), f\identity(function ($stmts) {
-                return pr\parseFuncArguments($stmts->args);
-            }));
+  /**
+   * @test
+   */
+  public function getUtilityMetadataOutputsLibraryArtifactMetadata()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          f\map,
+          f\fold,
+          IO::class,
+          State::class,
+          'foo',
+          'foo_bar',
+        )
+      )
+      ->then(function (string $artifact) {
+        $meta   = p\getUtilityMetadata($artifact);
+        $check  = f\partial(f\keysExist, $meta);
 
-            $this->assertIsArray($expr($funcCall));
-        });
-    }
+        $this->assertIsArray($meta);
+        if (!empty($meta)) {
+          $this->assertTrue(
+            $check('paramCount', 'parameters', 'returnType') ||
+            $check('implements', 'methods')
+          );
+        }
+      });
+  }
 
-    public function testPrintFuncExprOutputsFunctionExpression()
-    {
-        $this->forAll(Generator\associative([
-            'func'  => Generator\elements('map', 'identity'),
-            'args'  => Generator\tuple(Generator\elements('function ($x) { return $x + 2; }', 'strtoupper("ace411")'), Generator\constant('[1, 2, 3]'))
-        ]))->then(function (array $funcData) {
-            $pluck  = f\partial(f\pluck, $funcData);
-            $expr   = pr\printFuncExpr($pluck('func'), $pluck('args'));
-            
-            $this->assertIsString($expr);
-        });
-    }
+  /**
+   * @test
+   */
+  public function isLibraryArtifactChecksIfCodeArtifactExistsInBingoFunctionalLibrary()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'foo',
+          'map',
+          'concat',
+          'Collection',
+          'Maybe',
+          'Applicative',
+          'Asterisk',
+          'foo_bar',
+        )
+      )
+      ->then(function (string $artifact) {
+        $check = p\isLibraryArtifact($artifact);
+        [$metadata, $name] = $check;
 
-    public function testHandleFuncCallEnablesParsingOfFunctionCalls()
-    {
-        $this->forAll(Generator\elements('map(function ($x) { return $x + 2; }, $res)', 'identity(\'foo\')'))->then(function (string $funcCall) {
-            $finder     = f\partial(pr\nodeFinder, f\compose(pr\generateAst, self::exprFromTree)($funcCall));
-            $handler    = pr\handleFuncCall($finder, f\compose(f\identity, IO\IO));
-            
-            $this->assertInstanceOf(IO::class, $handler);
-            $this->assertIsString($handler->exec());
-        });
-    }
+        $this->assertIsArray($check);
+        $this->assertIsArray($metadata);
+        $this->assertIsString($name);
+      });
+  }
 
-    public function handleAssignEnablesParsingOfAssignmentOperations()
-    {
-        $this->forAll(Generator\elements('$add = function ($x) { return $x + 3; }', '$x = pow(2, 5)', '$y = new StdClass(13)', '$z = 12.5', '$str = "foo"'))->then(function (string $assign) {
-            $finder     = f\partial(pr\nodeFinder, pr\generateAst($funcCall));
-            $handler    = pr\handleAssign($finder, f\compose(f\identity, IO\IO));
+  /**
+   * @test
+   */
+  public function modifyNodeNamePrependsLibraryArtifactNamespaceToIdentifier()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'map',
+          'filter',
+          'identity',
+          'isArrayOf',
+          'Collection::from',
+          'maybe',
+        )
+      )
+      ->then(function (string $name) {
+        $modify     = f\compose(p\generateAst, fn ($ast) => (
+          p\modifyNodeName($ast[0]->expr->name)
+        ));
+        $identifier = $modify($name);
 
-            $this->assertInstanceOf(IO::class, $handler);
-            $this->assertIsBoolean($handler->exec());
-        });
-    }
+        $this->assertIsObject($identifier);
+        $this->assertTrue(
+          $identifier instanceof \PhpParser\Node\Name ||
+          $identifier instanceof \PhpParser\Node\Identifier
+        );
+      });
+  }
 
-    public function tearDown(): void
-    {
-        pr\storeClear();
-    }
+  /**
+   * @test
+   */
+  public function storeAddStoresVariableDataInApcuCache()
+  {
+    $this
+      ->forAll(
+        Generator\elements('x', 'y', 'z'),
+        Generator\elements(
+          'fn ($x) => $x ** 2',
+          f\concat('', f\identity, '(2)')
+        ),
+      )
+      ->then(function (string $var, string $expr) {
+        $add = p\storeAdd($var, $expr);
 
-    public static function exprFromTree(array $tree): object
-    {
-        $ret = f\compose(f\head, function (object $expr): object {
-            return f\pluck($expr->jsonSerialize(), 'expr');
-        });
+        $this->assertInstanceOf(IO::class, $add);
+        $this->assertIsBool($add->exec());
+      });
+  }
 
-        return $ret($tree);
-    }
+  /**
+   * @test
+   */
+  public function storeFetchByVarFetchesValueFromStore()
+  {
+    $this
+      ->forAll(
+        Generator\elements('x', 'y', 'z', 'foo', 'bar')
+      )
+      ->then(function (string $var) {
+        $fetch  = p\storeFetchByVar($var);
+        $res    = $fetch->exec();
 
-    public const exprFromTree = __CLASS__ . '::exprFromTree';
+        $this->assertInstanceOf(IO::class, $fetch);
+        $this->assertTrue(\is_string($res) || \is_null($res));
+      });
+  }
+
+  public static function extractExpr(string $code): array
+  {
+    $evalExpr = f\compose(
+      p\generateAst,
+      f\head,
+      State\evalState(State\gets(fn (object $root): object => (
+        $root->jsonSerialize()['expr']
+      )), null),
+    );
+
+    return $evalExpr(empty($code) ? '""' : $code);
+  }
+
+  /**
+   * @test
+   */
+  public function evalFunctionCallExecutesFunctionCall()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'identity(12 + 2)',
+          'map(fn ($x) => $x ** 2, range(1, 9))',
+          'Collection::from(range(3, 8))',
+          'is_array(range(4, 5))',
+        )
+      )
+      ->then(function (string $stmt) {
+        $parse    = f\compose(
+          fn ($code) => f\head(self::extractExpr($code)),
+          evalFunctionCall,
+        );
+        $parsable = $parse($stmt);
+        
+        $this->assertInstanceOf(IO::class, $parsable);
+        $this->assertIsString($parsable->exec());
+      });
+  }
+
+  /**
+   * @test
+   */
+  public function evalAssignParsesAssignmentOperation()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          '$x = 2',
+          '$y = fn ($x) => $x ** 2',
+          '$y = "foo-bar"',
+          '$z = strtoupper("FOO")',
+        )
+      )
+      ->then(function (string $stmt) {
+        $parse    = f\compose(
+          fn ($code) => f\head(self::extractExpr($code)),
+          evalAssign,
+        );
+        $parsable = $parse($stmt);
+
+        $this->assertInstanceOf(IO::class, $parsable);
+        $this->assertIsString($parsable->exec());
+      });
+  }
+
+  /**
+   * @test
+   */
+  public function evalVarDumpPrintsDataAssignedToVariable()
+  {
+    $this
+      ->forAll(
+        Generator\elements('$x', '$y', '$z'),
+      )
+      ->then(function (string $var) {
+        [$expr,]  = self::extractExpr($var);
+        $parsable = evalVarDump($expr);
+
+        $this->assertInstanceOf(IO::class, $parsable);
+        $this->assertIsString($parsable->exec());
+      });
+  }
+
+  /**
+   * @test
+   */
+  public function evalExpressionSelectivelyEvaluatesPHPExpressions()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          '$x = "FOO"',
+          'Collection::from(range(2, 5))->map(fn ($x) => $x ** 2)',
+          'is_array([1, 4, "foo", "bar"])',
+          'filter(fn ($x) => $x % 2 == 0, range(5, 15))',
+          '2 + 2',
+          '"foo-" . strtoupper("bar")',
+          '4 == "4"',
+          '',
+        )
+      )
+      ->then(function (string $stmt) {
+        [$expr, $node] = self::extractExpr($stmt);
+        $parsable = evalExpression($node, $expr);
+         
+        $this->assertInstanceOf(IO::class, $parsable);
+        $this->assertIsString($parsable->exec());
+      });
+  }
 }

@@ -1,43 +1,55 @@
-<p align="center">
-  <img src="https://ucarecdn.com/f99f2a54-7451-4603-a788-f7b14861c19f/bingofunctionalrepllogo600x338.png">
-</p>
-
 # bingo-functional-repl
 
-A simple REPL for the [bingo-functional](https://github.com/ace411/bingo-functional) library.
+<p align="center">
+  <img src="https://camo.githubusercontent.com/1da75cf9dfb79f1a0fb4457016145e497bc91558/68747470733a2f2f756361726563646e2e636f6d2f66393966326135342d373435312d343630332d613738382d6637623134383631633139662f62696e676f66756e6374696f6e616c7265706c6c6f676f363030783333382e706e67" />
+</p>
+
+A simple REPL for the bingo-functional library.
+
+[![Build Status](https://travis-ci.org/ace411/bingo-functional-repl.svg?branch=master)](https://travis-ci.org/ace411/bingo-functional-repl)
+[![License](https://poser.pugx.org/chemem/bingo-functional-repl/license)](//packagist.org/packages/chemem/bingo-functional-repl)
+[![composer.lock](https://poser.pugx.org/chemem/bingo-functional-repl/composerlock)](//packagist.org/packages/chemem/bingo-functional-repl)
+[![Latest Stable Version](https://poser.pugx.org/chemem/bingo-functional-repl/v)](//packagist.org/packages/chemem/bingo-functional-repl)
+[![Latest Unstable Version](https://poser.pugx.org/chemem/bingo-functional-repl/v/unstable)](//packagist.org/packages/chemem/bingo-functional-repl)
 
 ## Requirements
 
-- PHP 7.1 or greater
+- PHP 7.4 or greater
 
-- [apcu extension](https://www.php.net/manual/en/book.apcu.php)
+- ext-apcu
 
 ## Rationale
 
-The bingo-functional-repl is simply a playground for bingo-functional utilities - mostly helper functions. It is capable of selectively parsing PHP syntax and conveying results.
+The bingo-functional REPL is designed to be a playground for [bingo-functional](https://github.com/ace411/bingo-functional) artifacts - functions, monads, applicatives, and immutable structures.
 
-The REPL is a 100% opt-in tool for testing bingo-functional's offerings in a console before using them in more elaborate projects.
+The REPL can be considered a 100% opt-in tool for testing bingo-functional's potencies - one that informs approaches to library usage in more elaborate contexts.
 
 ## Installation
 
-Though it is possible to clone the repo, Composer remains the best tool for installing bingo-functional-repl. To install the package via Composer, type the following in a console of your choosing:
+Though it is possible to clone the repo, Composer remains the best tool for installing bingo-functional-repl. To install the package via Composer, type the following in a console of your choosing.
 
 ```sh
-composer require chemem/bingo-functional-repl
+$ composer require chemem/bingo-functional-repl
 ```
 
 ## Usage
 
-Upon successful installation of the package, type the following - also in a preferred CLI - to activate the REPL.
+Upon successful installation of the package, type the following - also in a preferred CLI - to activate the shell.
 
 ```sh
-vendor/bin/bfrepl
+$ path/to/vendor/bin/bfrepl
 ```
 
-## Documentation
+## Demonstration
 
-Please check out the [documentation](https://ace411.github.io/bingo-functional/#/repl) for more knowledge on how to use this library.
+[![asciicast](https://asciinema.org/a/ugVeeJ0eCIyy6GrOCDaLiqf62.svg)](https://asciinema.org/a/ugVeeJ0eCIyy6GrOCDaLiqf62)
 
 ## Dealing with problems
 
-Endeavor to create an issue on GitHub when the need arises or send an email to lochbm@live.com.
+Endeavor to create an issue on GitHub when the need arises or send an email to lochbm@gmail.com.
+
+## Contributing
+
+Consider buying me a coffee if you appreciate the offerings of the project and/or would like to provide more impetus for me to continue working on it.
+
+<a href="https://www.buymeacoffee.com/agiroLoki" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/lato-white.png" alt="Buy Me A Coffee" style="height: 51px !important;width: 217px !important;" ></a>

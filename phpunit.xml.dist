@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-    <phpunit
-        colors="true"
-        verbose="true"
-        bootstrap="vendor/autoload.php">
-        <testsuites>
-            <testsuite name="bingo-functional-repl testsuite">
-                <directory suffix="Test.php">tests</directory>
-            </testsuite>
-        </testsuites>
-        <filter>
-            <whitelist>
-                <directory suffix=".php">src</directory>
-            </whitelist>
-        </filter>
-    </phpunit>
+<phpunit
+  bootstrap="vendor/autoload.php"
+  verbose="true"
+  colors="true"
+  columns="max"
+  cacheResult="true"
+  convertNoticesToExceptions="false"
+>
+  <testsuites>
+    <testsuite name="Lyrics Analyzer tests">
+      <directory>tests</directory>
+    </testsuite>
+  </testsuites>
+  <filter>
+    <whitelist>
+      <directory suffix=".php">src</directory>
+    </whitelist>
+  </filter>
+</phpunit>

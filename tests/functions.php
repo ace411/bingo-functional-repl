@@ -5,118 +5,250 @@ declare(strict_types=1);
 namespace Chemem\Bingo\Functional\Repl\Tests;
 
 use \Chemem\Bingo\Functional\{
-    Algorithms as f,
-    Functors\Monads\IO,
-    Functors\Monads\State as s,
-    PatternMatching as p
+  Repl,
+  Algorithms as f,
+  Repl\Parser as pr,
+  Repl\Printer as pp,
+  Functors\Monads\IO,
+  PatternMatching as p
 };
-use Chemem\Bingo\Functional\Repl\{
-    Parser as pr,
-    Printer as pp
-};
+use \PhpParser\Node;
 
-const repl              = __NAMESPACE__ . '\\repl';
-
-function repl(string $input, array $history = []): IO
+/**
+ * @see Chemem\Bingo\Functional\Repl\Parser\evalFunctionCall
+ */
+function evalFunctionCall(Node $node): IO
 {
-    $ret = f\compose(f\partial('explode', ' '), f\partial(p\patternMatch, [
-        '["doc", func]'     => function (string $func) {
-
-            [$function, ] = pr\functionExists($func);
-            return IO\IO(empty($function) ?
-                pp\printError('nexists', $func) :
-                pr\printFuncMetadata($function));
-        },
-        '["help"]'          => function () {
-            $color = f\compose(f\toPairs, f\partial(f\map, function (array $pair): array {
-                $col = f\compose(f\head, f\partialRight(pp\colorOutput, pr\COLORS['success']));
-                return [$col($pair), f\last($pair)];
-            }));
-
-            return IO\IO(pp\printer(['cmd', 'desc'], $color(pr\REPL_HELP), [2, 0]));
-        },
-        '["history"]'       => function () use ($history) {
-            $ret = f\compose(f\toPairs, f\partial(f\map, function (array $pair) {
-                return [(f\head($pair) + 1), f\last($pair)];
-            }));
-
-            return IO\IO(pp\printer(['#', 'cmd'], $ret($history), [2, 0]));
-        },
-        '["exit"]'          => function () {
-            return IO\IO(pp\colorOutput('Thanks for using the REPL', pr\COLORS['neutral']));
-        },
-        '["howto"]'         => function () {
-            return IO\IO(pr\REPL_HOW);
-        },
-        '_'                 => function () use ($input) {
-            return handleCode($input);
-        }
-    ]));
-    return $ret($input);
+  return IO\IO(fn (): string => pr\prettyPrint(
+    pr\customTraverser()->traverse([$node])
+  ))->bind(fn (string $code) => phpExec($code));
 }
 
-const handleCode        = __NAMESPACE__ . '\\handleCode';
+const evalFunctionCall = __NAMESPACE__ . '\\evalFunctionCall';
 
-function handleCode(string $input): IO
+/**
+ * @see Chemem\Bingo\Functional\Repl\Parser\evalAssign
+ */
+function evalAssign(Node $node): IO
 {
-    [$instance, ]   = s\evalState(s\gets(f\head), null)(pr\generateAst($input));
-    $err            = IO\IO(function () {
-        return function (string $msg) {
-            return $msg;
-        };
-    });
-    return !$instance ?
-        $err->ap(IO\IO('Cannot parse empty input')) :
-        p\patternMatch([
-            Node\Stmt\Expression::class     => function () use ($instance) {
-                return handleExpression($instance, f\pluck($instance->jsonSerialize(), 'expr'));
-            },
-            '_'                             => function () use ($err) {
-                return $err->ap(IO\IO('Cannot parse non-expression'));
-            }
-        ], $instance);
+  $assign   = pr\findFirstInstanceOfNode($node, Node\Expr\Assign::class);
+  $success  = f\compose(
+    f\partialRight(f\pluck, 'success'),
+    f\partial(pp\colorOutput, 'Success')
+  );
+
+  return pr\storeAdd(
+    $assign->var->name,
+    pr\prettyPrint(
+      pr\customTraverser()->traverse([$assign->expr])
+    )
+  )->bind(fn (bool $status) => IO\IO(
+    $status ?
+      $success(Repl\REPL_COLORS) :
+      pp\printError('nexecutable', 'Could not assign')
+  ));
 }
 
-const handleExpression   = __NAMESPACE__ . '\\handleExpression';
+const evalAssign = __NAMESPACE__ . '\\evalAssign';
 
-function handleExpression(string $code, object $type): IO
+/**
+ * @see Chemem\Bingo\Functional\Repl\Parser\evalVarDump
+ */
+function evalVarDump(Node $node): IO
 {
-    $finder = f\partial(pr\nodeFinder, $code);
-    return p\patternMatch([
-        Node\Expr\FuncCall::class       => function () use ($finder) {
-            return pr\handleFuncCall($finder, evalCode);
-        },
-        Node\Expr\Assign::class         => function () use ($finder) {
-            return pr\handleAssign($finder, function (bool $result) {
-                return IO\IO($result ? 'Assign' : 'No Assign');
-            });
-        },
-        Node\Expr\Variable::class       => function () use ($finder) {
-            return pr\handleVar($finder, f\compose(f\identity, IO\IO));
-        },
-        '_'                             => function () {
-            return IO\IO('Cannot parse the operation');
-        }
-    ], $type);
+  $var = pr\findFirstInstanceOfNode($node, Node\Expr\Variable::class);
+
+  return pr\storeFetchByVar($var->name)
+    ->bind(fn ($res): IO => !$res ?
+      IO\IO(fn ()        => pp\printError('nexists', f\concat('', '$', $var->name))) :
+      phpExec($res)
+    );
 }
 
-const evalCode          = __NAMESPACE__ . '\\evalCode';
+const evalVarDump = __NAMESPACE__ . '\\evalVarDump';
 
-function evalCode(string $stmt): IO
+/**
+ * @see Chemem\Bingo\Functional\Repl\Parser\evalExpression
+ */
+function evalExpression(Node $node, Node $expr): IO
 {
-    $expr = f\compose(f\partial('str_replace', '"', '\"'), f\partial(f\concat, '', 'print_r'), f\partialRight(f\partial('str_replace', '{expr}'), PARSE_EXPR));
-    
-    return IO\IO($expr($stmt))
-        ->map(f\partialRight(f\partial(f\concat, '', 'php -r "'), '"'))
-        ->bind(initProcess);
+  $err    = f\compose(
+    pr\prettyPrint,
+    f\partial(pp\printError, 'nparsable'),
+    IO\IO
+  );
+  $concat = f\partialRight(
+    f\partial(f\concat, '', '[', '"PhpParser","Node","Expr",'),
+    ']',
+  );
+
+  return p\patternMatch([
+    $concat('"StaticCall"')   => fn () => evalFunctionCall($node),
+    $concat('"MethodCall"')   => fn () => evalFunctionCall($node),
+    $concat('"BinaryOp",_')   => fn () => evalFunctionCall($node),
+    $concat('"FuncCall"')     => fn () => evalFunctionCall($node),
+    $concat('"Assign"')       => fn () => evalAssign($node),
+    $concat('"Variable"')     => fn () => evalVarDump($node),
+    '_'                       => fn () => $err([$node]),
+  ], \explode('\\', (new \ReflectionClass($expr))->getName()));
 }
 
-const initProcess       = __NAMESPACE__ . '\\initProcess';
+const evalExpression = __NAMESPACE__ . '\\evalExpression';
 
-function initProcess(string $expr): IO
+/**
+ * @see Chemem\Bingo\Functional\Repl\Parser\parseCode
+ */
+function parseCode(string $code): IO
 {
-    return IO\IO(function () use ($expr) {
-        $exec = @exec(escapeshellcmd($expr), $output);
-        return f\head($output);
-    });
+  $node = f\head(pr\generateAst(empty($code) ? '""' : $code));
+  $expr = f\pluck($node->jsonSerialize(), 'expr');
+
+  return p\patternMatch([
+    Node\Stmt\Expression::class => fn () => evalExpression($node, $expr),
+    '_'                         => fn () => (
+      IO\IO(pp\printError('nparsable', f\concat('', '{', $code, '}')))
+    ),
+  ], $node);
 }
+
+const parseCode = __NAMESPACE__ . '\\parseCode';
+
+/**
+ * @see Chemem\Bingo\Functional\Repl\parse
+ */
+function parse(string $input, array $history = []): IO
+{
+  $parser = p\match([
+    '(x:xs:_)' => fn (string $cmd, string $func) => (
+      $cmd == 'doc' ?
+        docFuncCmd($func) :
+        parseCode($input)
+    ),
+    '(x:_)' => fn (string $cmd) => p\patternMatch([
+      '"history"' => fn () => historyCmd($history),
+      '"howto"'   => fn () => howtoCmd(),
+      '"help"'    => fn () => helpCmd(),
+      '"exit"'    => fn () => exitCmd(),
+      '_'         => fn () => parseCode($input),
+    ], $cmd),
+    '_'     => fn () => parseCode($input),
+  ]);
+
+  return $parser(\explode(' ', $input));
+}
+
+const parse = __NAMESPACE__ . '\\parse';
+
+/**
+ * @see Chemem\Bingo\Functional\Repl\exitCmd
+ */
+function exitCmd(): IO
+{
+  $genMsg = f\compose(
+    f\partialRight(f\pluck, 'neutral'),
+    f\partial(pp\colorOutput, 'Thanks for using the REPL')
+  );
+
+  return IO\IO(fn (): string => $genMsg(Repl\REPL_COLORS));
+}
+
+const exitCmd = __NAMESPACE__ . '\\exitCmd';
+
+/**
+ * @see Chemem\Bingo\Functional\Repl\historyCmd
+ */
+function historyCmd(array $history): IO
+{
+  $mapper = fn (array $pair): array => [f\head($pair) + 1, f\last($pair)];
+
+  return IO\IO(fn (): string => pp\printTable(
+    ['#', 'cmd'],
+    pp\customTableRows($history, $mapper),
+    [2, 0]
+  ));
+}
+
+const historyCmd = __NAMESPACE__ . '\\historyCmd';
+
+/**
+ * @see Chemem\Bingo\Functional\Repl\howToCmd
+ */
+function howtoCmd(): IO
+{
+  return IO\IO(fn (): string => Repl\REPL_HOW);
+}
+
+const howtoCmd = __NAMESPACE__ . '\\howtoCmd';
+
+/**
+ * @see Chemem\Bingo\Functional\Repl\helpCmd
+ */
+function helpCmd(): IO
+{
+  $color  = fn (string $text): callable => f\compose(
+    f\partialRight(f\pluck, 'success'),
+    f\partial(pp\colorOutput, $text)
+  );
+  $mapper = fn (array $pair): array => [
+    $color(f\head($pair))(Repl\REPL_COLORS),
+    f\last($pair),
+  ];
+
+  return IO\IO(fn (): string => pp\printTable(
+    ['cmd', 'desc'],
+    pp\customTableRows(Repl\REPL_HELP, $mapper),
+    [2, 0]
+  ));
+}
+
+const helpCmd = __NAMESPACE__ . '\\helpCmd';
+
+/**
+ * @see Chemem\Bingo\Functional\Repl\docFuncCmd
+ */
+function docFuncCmd(string $function): IO
+{
+  $color    = fn (string $text): callable => f\compose(
+    f\partialRight(f\pluck, 'success'),
+    f\partial(pp\colorOutput, $text)
+  );
+  $mapper   = fn (array $pair): array => [
+    $color(f\head($pair))(Repl\REPL_COLORS),
+    f\last($pair),
+  ];
+  $metadata = f\compose(
+    pr\isLibraryArtifact,
+    fn (array $state): string => empty(f\head($state)) ?
+      pp\printError('nexists', f\last($state)) :
+      pp\printTable(
+        ['item', 'info'],
+        pp\customTableRows(
+          pr\getUtilityMetadata(f\last(f\head($state))),
+          $mapper
+        ),
+        [2, 0]
+      )
+  );
+
+  return IO\IO(fn (): string => $metadata($function));
+}
+
+const docFuncCmd = __NAMESPACE__ . '\\docFuncCmd';
+
+/**
+ * @see Chemem\Bingo\Functional\Repl\Parser\phpExec
+ */
+function phpExec(string $cmd): IO
+{
+  $exec = f\compose(
+    pp\genCmdDirective,
+    f\partialRight('popen', 'r'),
+    f\partialRight('fread', 8192),
+    f\partial(f\concat, '', '=>'),
+    IO\IO,
+  );
+
+  return $exec($cmd);
+}
+
+const phpExec = __NAMESPACE__ . '\\phpExec';

@@ -5,109 +5,124 @@ declare(strict_types=1);
 namespace Chemem\Bingo\Functional\Repl\Tests;
 
 use \Eris\Generator;
-use \Chemem\Bingo\Functional\Repl\{
-    Repl as r,
-    IO as IO_,
-    Printer as pp,
-    Parser as pr
-};
-use \Chemem\Bingo\Functional\{
-    Algorithms as f,
-    Functors\Monads\IO
+use Chemem\Bingo\Functional\{
+  Repl,
+  Algorithms as f,
+  Repl\Parser as pp,
+  Functors\Monads\IO,
 };
 
 class ReplTest extends \PHPUnit\Framework\TestCase
 {
-    use \Eris\TestTrait;
+  use \Eris\TestTrait;
+  
+  /**
+   * @test
+   */
+  public function historyCmdPrintsReplHistory()
+  {
+    $this
+      ->forAll(
+        Generator\tuple(
+          Generator\constant('history'),
+          Generator\constant('doc foo'),
+          Generator\constant('map("strtoupper", ["foo", "bar", "baz"])'),
+        )
+      )
+      ->then(function (array $history) {
+        $output = historyCmd($history);
 
-    public function tearDown(): void
-    {
-        pr\storeClear();
-    }
+        $this->assertInstanceOf(IO::class, $output);
+        $this->assertIsString($output->exec());
+      });
+  }
 
-    public function testReplParsesDocCommand()
-    {
-        $this->forAll(Generator\map(f\partial(f\concat, ' ', 'doc'), Generator\elements(
-            'map',
-            'zip',
-            'filter',
-            'identity'
-        )))->then(function (string $cmd) {
-            $res = repl($cmd);
+  /**
+   * @test
+   */
+  public function howtoCmdPrintsGuideToReplUsage()
+  {
+    $this
+      ->forAll(
+        Generator\constant(howtoCmd),
+      )
+      ->then(function (string $func) {
+        $howto = $func();
 
-            $this->assertInstanceOf(IO::class, $res);
-            $this->assertIsString($res->exec());
-        });
-    }
+        $this->assertInstanceOf(IO::class, $howto);
+        $this->assertEquals(Repl\REPL_HOW, $howto->exec());
+      });
+  }
 
-    public function testReplParsesHistoryCommand()
-    {
-        $this->forAll(Generator\tuple(
-            Generator\elements('howto', 'identity("foo")', 'history', 'help'),
-            Generator\constant('filter(function ($x) { return $x > 3; }, [2, 6])')
-        ))->then(function (array $history) {
-            $output = repl('history', $history);
+  /**
+   * @test
+   */
+  public function helpCmdPrintsHelpInformation()
+  {
+    $this
+      ->forAll(
+        Generator\constant(helpCmd),
+      )
+      ->then(function (string $func) {
+        $help = $func();
 
-            $this->assertIsString($output->exec());
-            $this->assertRegExp('/[#\a-z\A-Z]+/', $output->exec());
-        });
-    }
+        $this->assertInstanceOf(IO::class, $help);
+        $this->assertIsString($help->exec());
+        $this->assertRegExp('/cmd+/', $help->exec());
+        $this->assertRegExp('/desc+/', $help->exec());
+      });
+  }
 
-    public function testReplParsesHowToCommand()
-    {
-        $this->forAll(Generator\constant('howto'))->then(function (string $cmd) {
-            $output = repl($cmd);
+  /**
+   * @test
+   */
+  public function docFuncCmdPrintsLibraryFunctionMetadata()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'foo',
+          'map',
+          'filter',
+          'State',
+          'Collection',
+        ),
+      )
+      ->then(function (string $entity) {
+        $doc = docFuncCmd($entity);
 
-            $this->assertInstanceOf(IO::class, $output);
-            $this->assertIsString($output->exec());
-            $this->assertEquals(pr\REPL_HOW, $output->exec());
-        });
-    }
+        $this->assertInstanceOf(IO::class, $doc);
+        $this->assertIsString($doc->exec());
+      });
+  }
 
-    public function testReplParsesExitCommand()
-    {
-        $this->forAll(Generator\constant('exit'))->then(function (string $cmd) {
-            $output = repl($cmd);
+  /**
+   * @test
+   */
+  public function parseSimulatesRepl()
+  {
+    $this
+      ->forAll(
+        Generator\elements(
+          'foo',
+          'help',
+          'howto',
+          'history',
+          'doc map',
+          '$x = 12',
+          '12 - 3',
+          '"foo" . "bar"',
+          '"foo-" . strtoupper("baz")',
+          'map(fn ($x) => $x ** 2, range(5, 11))',
+          'Collection::from(["foo", "bar"])->tail()',
+          'exit',
+        ),
+      )
+      ->then(function (string $cmd) {
+        $repl = parse($cmd, [$cmd]);
 
-            $this->assertInstanceOf(IO::class, $output);
-            $this->assertIsString($output->exec());
-            $this->assertEquals(
-                pp\colorOutput(
-                    'Thanks for using the REPL',
-                    pr\COLORS['neutral']
-                ),
-                $output->exec()
-            );
-        });
-    }
-
-    public function testReplParsesAssignmentExpressions()
-    {
-        $this->forAll(Generator\elements(
-            '$a = 12',
-            '$b = function ($x) { return $x * 3; }',
-            '$c = "foo"',
-            '$d = 3.521',
-            '$e = new StdClass("foo-bar")'
-        ))->then(function (string $expr) {
-            $output = repl($expr);
-
-            $this->assertInstanceOf(IO::class, $output);
-            $this->assertIsString($output->exec());
-        });
-    }
-
-    public function testReplParsesFuncCallExpressions()
-    {
-        $this->forAll(Generator\elements(
-            'map("strtoupper", ["foo", "bar"])',
-            'filter(function ($x) { return $x % 2 == 0; }, [3, 7, 8])',
-            'identity("foo")'
-        ))->then(function (string $expr) {
-            $output = repl($expr);
-
-            $this->assertInstanceOf(IO::class, $output);
-            $this->assertIsString($output->exec());
-        });
-    }
+        $this->assertInstanceOf(IO::class, $repl);
+        $this->assertIsString($repl->exec());
+      });
+  }
 }
