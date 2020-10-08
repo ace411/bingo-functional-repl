@@ -243,17 +243,6 @@ function stdioWrite(Stdio $stdio, string $txt): IO
 }
 const stdioWrite          = __NAMESPACE__ . '\\stdioWrite';
 
-/*
-function promptUser(Stdio $stdio, string $prompt): IO
-{
-	return IO\IO(function () use ($stdio, $prompt) {
-		$stdio->setPrompt($prompt);
-		return $stdio;
-	});
-}
-const promptUser          = __NAMESPACE__ . '\\promptUser';
-*/
-
 /**
  * printHeaderTxt
  * asynchronously write REPL header text to standard output device
@@ -268,25 +257,6 @@ function printHeaderTxt(Stdio $stdio, string ...$frags): IO
   return stdioWrite($stdio, pp\headerText(...$frags));
 }
 const printHeaderTxt      = __NAMESPACE__ . '\\printHeaderTxt';
-
-/*
-function handleReplError(Stdio $stdio): IO
-{
-	return IO\IO(function () use ($stdio) {
-		$stdio->on('error', function (\Throwable $err) use ($stdio) {
-			$genMsg = f\compose(
-				f\partialRight(f\pluck, 'nexecutable'),
-				f\partial('str_replace', '{err}', $err->getMessage())
-			);
-			
-			$stdio->write($genMsg(Repl\REPL_ERRORS));
-		});
-
-		return $stdio;
-	});
-}
-const handleReplError     = __NAMESPACE__ . '\\handleReplError';
-*/
 
 /**
  * getInput
