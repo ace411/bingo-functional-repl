@@ -236,7 +236,7 @@ function evalExpression(
   $write  = f\partial(Repl\stdioWrite, $stdio);
   $concat = f\partialRight(
     f\partial(f\concat, '', '[', '"PhpParser","Node","Expr",'),
-    ']',
+    ']'
   );
 
   return p\patternMatch(

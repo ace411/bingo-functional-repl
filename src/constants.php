@@ -31,6 +31,7 @@ const FUNCTOR_NAMESPACE   = BASE_NAMESPACE . 'Functors\\';
  * @var array BASE_NAMESPACES
  */
 const BASE_NAMESPACES     = [
+  MONAD_NAMESPACE,
   MONAD_NAMESPACE . 'IO\\',
   MONAD_NAMESPACE . 'State\\',
   MONAD_NAMESPACE . 'Reader\\',
@@ -41,7 +42,6 @@ const BASE_NAMESPACES     = [
   BASE_NAMESPACE,
   BASE_NAMESPACE  . 'Algorithms\\',
   BASE_NAMESPACE  . 'PatternMatching\\',
-  BASE_NAMESPACE  . 'Functors\\Monads\\',
   FUNCTOR_NAMESPACE,
   FUNCTOR_NAMESPACE . 'Lens\\',
   FUNCTOR_NAMESPACE . 'Applicative\\',

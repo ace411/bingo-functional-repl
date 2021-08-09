@@ -172,7 +172,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
       )
       ->then(function (string $item) {
         $std    = pp\printObject(new \StdClass($item));
-        $monad  = pp\printObject(Maybe\Maybe::just($item)->filter('is_string'));
+        $monad  = pp\printObject(Maybe::just($item)->filter('is_string'));
         $regexp = '/(Object){1}([]){1}([\w\s]+)/';
 
         $this->assertIsString($std);
