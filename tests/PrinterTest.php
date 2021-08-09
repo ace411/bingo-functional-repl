@@ -6,12 +6,10 @@ namespace Chemem\Bingo\Functional\Repl\Tests;
 
 \error_reporting(0);
 
-use \Eris\Generator;
-use Chemem\Bingo\Functional\{
-  Functors\Maybe,
-  Algorithms as f,
-  Repl\Printer as pp,
-};
+use Eris\Generator;
+use Chemem\Bingo\Functional as f;
+use Chemem\Bingo\Functional\Functors\Monads\Maybe;
+use Chemem\Bingo\Functional\Repl\Printer as pp;
 
 class PrinterTest extends \PHPUnit\Framework\TestCase
 {
@@ -25,7 +23,9 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
     $this
       ->forAll(
         Generator\suchThat(
-          fn (string $str): bool => \mb_strlen($str, 'utf-8') >= 1,
+          function (string $str) {
+            return \mb_strlen($str, 'utf-8') >= 1;
+          },
           Generator\string()
         ),
         Generator\elements(
@@ -68,7 +68,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
         $print    = f\partial(pp\printTable, $header, $data, $padding);
         $border   = $print(true);
         $noBorder = $print(false);
-        
+
         $this->assertIsString($border);
         $this->assertIsString($noBorder);
       });
@@ -87,10 +87,13 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
         ])
       )
       ->then(function (array $data) {
-        $plain = pp\customTableRows($data, null);
-        $wcallback = pp\customTableRows($data, fn (array $pair): array => (
-          [\strtoupper(f\head($pair)), f\last($pair)]
-        ));
+        $plain      = pp\customTableRows($data, null);
+        $wcallback  = pp\customTableRows(
+          $data,
+          function (array $pair) {
+            return [\strtoupper(f\head($pair)), f\last($pair)];
+          }
+        );
 
         $this->assertIsArray($plain);
         $this->assertIsArray($wcallback);
@@ -106,7 +109,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
       ->forAll(
         Generator\tuple(
           Generator\elements('foo', 'bar'),
-          Generator\elements('bar', 'baz'),
+          Generator\elements('bar', 'baz')
         )
       )
       ->then(function (array $items) {
@@ -124,7 +127,11 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
     $this
       ->forAll(
         Generator\elements('nexists', 'nparsable', 'nexecutable'),
-        Generator\elements('spike()', 'const foo = fn ($x) => $x + 2', '[$x,] = range(1, 2)'),
+        Generator\elements(
+          'spike()',
+          'const foo = fn ($x) => $x + 2',
+          '[$x,] = range(1, 2)'
+        )
       )
       ->then(function (string $err, string $msg) {
         $res = pp\printError($err, $msg);
@@ -144,7 +151,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
           '$add = fn ($x, $y) => $x + $y',
           'identity(12)',
           'Maybe::just(2)->filter(fn ($x) => $x % 2 == 0)',
-          'Collection::from(range(1, 5))->map(fn ($x) => $x ** 2)',
+          'Collection::from(range(1, 5))->map(fn ($x) => $x ** 2)'
         )
       )
       ->then(function (string $expr) {
@@ -165,7 +172,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
       )
       ->then(function (string $item) {
         $std    = pp\printObject(new \StdClass($item));
-        $monad  = pp\printObject(Maybe\Maybe::just($item)->filter('is_string'));
+        $monad  = pp\printObject(Maybe::just($item)->filter('is_string'));
         $regexp = '/(Object){1}([]){1}([\w\s]+)/';
 
         $this->assertIsString($std);
