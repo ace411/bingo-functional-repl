@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 namespace Chemem\Bingo\Functional\Repl\Tests;
 
-use \Eris\Generator;
-use Chemem\Bingo\Functional\{
-  Repl,
-  Algorithms as f,
-  Repl\Parser as pp,
-  Functors\Monads\IO,
-};
+use Eris\Generator;
+use Chemem\Bingo\Functional\Repl;
+use Chemem\Bingo\Functional\Functors\Monads\IO;
 
 class ReplTest extends \PHPUnit\Framework\TestCase
 {
   use \Eris\TestTrait;
-  
+
   /**
    * @test
    */
@@ -26,7 +22,7 @@ class ReplTest extends \PHPUnit\Framework\TestCase
         Generator\tuple(
           Generator\constant('history'),
           Generator\constant('doc foo'),
-          Generator\constant('map("strtoupper", ["foo", "bar", "baz"])'),
+          Generator\constant('map("strtoupper", ["foo", "bar", "baz"])')
         )
       )
       ->then(function (array $history) {
@@ -44,7 +40,7 @@ class ReplTest extends \PHPUnit\Framework\TestCase
   {
     $this
       ->forAll(
-        Generator\constant(howtoCmd),
+        Generator\constant(howtoCmd)
       )
       ->then(function (string $func) {
         $howto = $func();
@@ -61,7 +57,7 @@ class ReplTest extends \PHPUnit\Framework\TestCase
   {
     $this
       ->forAll(
-        Generator\constant(helpCmd),
+        Generator\constant(helpCmd)
       )
       ->then(function (string $func) {
         $help = $func();
@@ -85,8 +81,8 @@ class ReplTest extends \PHPUnit\Framework\TestCase
           'map',
           'filter',
           'State',
-          'Collection',
-        ),
+          'Collection'
+        )
       )
       ->then(function (string $entity) {
         $doc = docFuncCmd($entity);
@@ -114,9 +110,10 @@ class ReplTest extends \PHPUnit\Framework\TestCase
           '"foo" . "bar"',
           '"foo-" . strtoupper("baz")',
           'map(fn ($x) => $x ** 2, range(5, 11))',
+          'map(function ($x) { return $x . "foo"; }, ["baz", "bar"])',
           'Collection::from(["foo", "bar"])->tail()',
-          'exit',
-        ),
+          'exit'
+        )
       )
       ->then(function (string $cmd) {
         $repl = parse($cmd, [$cmd]);

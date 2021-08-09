@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace Chemem\Bingo\Functional\Repl\Tests;
 
-use \Chemem\Bingo\Functional\{
-  Repl,
-  Algorithms as f,
-  Repl\Parser as pr,
-  Repl\Printer as pp,
-  Functors\Monads\IO,
-  PatternMatching as p
-};
-use \PhpParser\Node;
+use Chemem\Bingo\Functional as f;
+use Chemem\Bingo\Functional\Repl;
+use Chemem\Bingo\Functional\Repl\Parser as pr;
+use Chemem\Bingo\Functional\Repl\Printer as pp;
+use Chemem\Bingo\Functional\Functors\Monads\IO;
+use Chemem\Bingo\Functional\PatternMatching as p;
+use PhpParser\Node;
 
 /**
  * @see Chemem\Bingo\Functional\Repl\Parser\evalFunctionCall
  */
 function evalFunctionCall(Node $node): IO
 {
-  return IO\IO(fn (): string => pr\prettyPrint(
-    pr\customTraverser()->traverse([$node])
-  ))->bind(fn (string $code) => phpExec($code));
+  return IO\IO(
+    pr\prettyPrint(
+      pr\customTraverser()->traverse([$node])
+    )
+  )->bind(
+    function (string $code) {
+      return phpExec($code);
+    }
+  );
 }
 
 const evalFunctionCall = __NAMESPACE__ . '\\evalFunctionCall';
@@ -42,11 +46,15 @@ function evalAssign(Node $node): IO
     pr\prettyPrint(
       pr\customTraverser()->traverse([$assign->expr])
     )
-  )->bind(fn (bool $status) => IO\IO(
-    $status ?
-      $success(Repl\REPL_COLORS) :
-      pp\printError('nexecutable', 'Could not assign')
-  ));
+  )->bind(
+    function (bool $status) use ($success) {
+      return IO\IO(
+        $status ?
+          $success(Repl\REPL_COLORS) :
+          pp\printError('nexecutable', 'Could not assign')
+      );
+    }
+  );
 }
 
 const evalAssign = __NAMESPACE__ . '\\evalAssign';
@@ -59,9 +67,12 @@ function evalVarDump(Node $node): IO
   $var = pr\findFirstInstanceOfNode($node, Node\Expr\Variable::class);
 
   return pr\storeFetchByVar($var->name)
-    ->bind(fn ($res): IO => !$res ?
-      IO\IO(fn ()        => pp\printError('nexists', f\concat('', '$', $var->name))) :
-      phpExec($res)
+    ->bind(
+      function ($res) use ($var) {
+        return !$res ?
+          IO\IO(pp\printError('nexists', f\concat('', '$', $var->name))) :
+          phpExec($res);
+      }
     );
 }
 
@@ -79,17 +90,31 @@ function evalExpression(Node $node, Node $expr): IO
   );
   $concat = f\partialRight(
     f\partial(f\concat, '', '[', '"PhpParser","Node","Expr",'),
-    ']',
+    ']'
   );
 
   return p\patternMatch([
-    $concat('"StaticCall"')   => fn () => evalFunctionCall($node),
-    $concat('"MethodCall"')   => fn () => evalFunctionCall($node),
-    $concat('"BinaryOp",_')   => fn () => evalFunctionCall($node),
-    $concat('"FuncCall"')     => fn () => evalFunctionCall($node),
-    $concat('"Assign"')       => fn () => evalAssign($node),
-    $concat('"Variable"')     => fn () => evalVarDump($node),
-    '_'                       => fn () => $err([$node]),
+    $concat('"StaticCall"')   => function () use ($node) {
+      return evalFunctionCall($node);
+    },
+    $concat('"MethodCall"')   => function () use ($node) {
+      return evalFunctionCall($node);
+    },
+    $concat('"BinaryOp",_')   => function () use ($node) {
+      return evalFunctionCall($node);
+    },
+    $concat('"FuncCall"')     => function () use ($node) {
+      return evalFunctionCall($node);
+    },
+    $concat('"Assign"')       => function () use ($node) {
+      return evalAssign($node);
+    },
+    $concat('"Variable"')     => function () use ($node) {
+      return evalVarDump($node);
+    },
+    '_'                       => function () use ($err, $node) {
+      return $err([$node]);
+    },
   ], \explode('\\', (new \ReflectionClass($expr))->getName()));
 }
 
@@ -104,10 +129,12 @@ function parseCode(string $code): IO
   $expr = f\pluck($node->jsonSerialize(), 'expr');
 
   return p\patternMatch([
-    Node\Stmt\Expression::class => fn () => evalExpression($node, $expr),
-    '_'                         => fn () => (
-      IO\IO(pp\printError('nparsable', f\concat('', '{', $code, '}')))
-    ),
+    Node\Stmt\Expression::class => function () use ($node, $expr) {
+      return evalExpression($node, $expr);
+    },
+    '_'                         => function () use ($code) {
+      return IO\IO(pp\printError('nparsable', f\concat('', '{', $code, '}')));
+    },
   ], $node);
 }
 
@@ -118,20 +145,37 @@ const parseCode = __NAMESPACE__ . '\\parseCode';
  */
 function parse(string $input, array $history = []): IO
 {
-  $parser = p\match([
-    '(x:xs:_)' => fn (string $cmd, string $func) => (
-      $cmd == 'doc' ?
+  $parser = p\cmatch([
+    '(x:xs:_)' => function (string $cmd, string $func) use ($input) {
+      return $cmd == 'doc' ?
         docFuncCmd($func) :
-        parseCode($input)
-    ),
-    '(x:_)' => fn (string $cmd) => p\patternMatch([
-      '"history"' => fn () => historyCmd($history),
-      '"howto"'   => fn () => howtoCmd(),
-      '"help"'    => fn () => helpCmd(),
-      '"exit"'    => fn () => exitCmd(),
-      '_'         => fn () => parseCode($input),
-    ], $cmd),
-    '_'     => fn () => parseCode($input),
+        parseCode($input);
+    },
+    '(x:_)' => function (string $cmd) use ($history, $input) {
+      return p\patternMatch(
+        [
+          '"history"' => function () use ($history) {
+            return historyCmd($history);
+          },
+          '"howto"'   => function () {
+            return howtoCmd();
+          },
+          '"help"'    => function () {
+            return helpCmd();
+          },
+          '"exit"'    => function () {
+            return exitCmd();
+          },
+          '_'         => function () use ($input) {
+            return parseCode($input);
+          },
+        ],
+        $cmd
+      );
+    },
+    '_'     => function () use ($input) {
+      return parseCode($input);
+    },
   ]);
 
   return $parser(\explode(' ', $input));
@@ -149,7 +193,7 @@ function exitCmd(): IO
     f\partial(pp\colorOutput, 'Thanks for using the REPL')
   );
 
-  return IO\IO(fn (): string => $genMsg(Repl\REPL_COLORS));
+  return IO\IO($genMsg(Repl\REPL_COLORS));
 }
 
 const exitCmd = __NAMESPACE__ . '\\exitCmd';
@@ -159,13 +203,17 @@ const exitCmd = __NAMESPACE__ . '\\exitCmd';
  */
 function historyCmd(array $history): IO
 {
-  $mapper = fn (array $pair): array => [f\head($pair) + 1, f\last($pair)];
+  $mapper = function (array $pair) {
+    return [f\head($pair) + 1, f\last($pair)];
+  };
 
-  return IO\IO(fn (): string => pp\printTable(
-    ['#', 'cmd'],
-    pp\customTableRows($history, $mapper),
-    [2, 0]
-  ));
+  return IO\IO(
+    pp\printTable(
+      ['#', 'cmd'],
+      pp\customTableRows($history, $mapper),
+      [2, 0]
+    )
+  );
 }
 
 const historyCmd = __NAMESPACE__ . '\\historyCmd';
@@ -175,7 +223,7 @@ const historyCmd = __NAMESPACE__ . '\\historyCmd';
  */
 function howtoCmd(): IO
 {
-  return IO\IO(fn (): string => Repl\REPL_HOW);
+  return IO\IO(Repl\REPL_HOW);
 }
 
 const howtoCmd = __NAMESPACE__ . '\\howtoCmd';
@@ -185,20 +233,26 @@ const howtoCmd = __NAMESPACE__ . '\\howtoCmd';
  */
 function helpCmd(): IO
 {
-  $color  = fn (string $text): callable => f\compose(
-    f\partialRight(f\pluck, 'success'),
-    f\partial(pp\colorOutput, $text)
-  );
-  $mapper = fn (array $pair): array => [
-    $color(f\head($pair))(Repl\REPL_COLORS),
-    f\last($pair),
-  ];
+  $color  = function (string $text) {
+    return f\compose(
+      f\partialRight(f\pluck, 'success'),
+      f\partial(pp\colorOutput, $text)
+    );
+  };
+  $mapper = function (array $pair) use ($color) {
+    return [
+      $color(f\head($pair))(Repl\REPL_COLORS),
+      f\last($pair),
+    ];
+  };
 
-  return IO\IO(fn (): string => pp\printTable(
-    ['cmd', 'desc'],
-    pp\customTableRows(Repl\REPL_HELP, $mapper),
-    [2, 0]
-  ));
+  return IO\IO(
+    pp\printTable(
+      ['cmd', 'desc'],
+      pp\customTableRows(Repl\REPL_HELP, $mapper),
+      [2, 0]
+    )
+  );
 }
 
 const helpCmd = __NAMESPACE__ . '\\helpCmd';
@@ -208,29 +262,36 @@ const helpCmd = __NAMESPACE__ . '\\helpCmd';
  */
 function docFuncCmd(string $function): IO
 {
-  $color    = fn (string $text): callable => f\compose(
-    f\partialRight(f\pluck, 'success'),
-    f\partial(pp\colorOutput, $text)
-  );
-  $mapper   = fn (array $pair): array => [
-    $color(f\head($pair))(Repl\REPL_COLORS),
-    f\last($pair),
-  ];
+  $color    = function (string $text) {
+    return f\compose(
+      f\partialRight(f\pluck, 'success'),
+      f\partial(pp\colorOutput, $text)
+    );
+  };
+  $mapper   = function (array $pair) use ($color) {
+    return [
+      $color(f\head($pair))(Repl\REPL_COLORS),
+      f\last($pair),
+    ];
+  };
+
   $metadata = f\compose(
     pr\isLibraryArtifact,
-    fn (array $state): string => empty(f\head($state)) ?
-      pp\printError('nexists', f\last($state)) :
-      pp\printTable(
-        ['item', 'info'],
-        pp\customTableRows(
-          pr\getUtilityMetadata(f\last(f\head($state))),
-          $mapper
-        ),
-        [2, 0]
-      )
+    function (array $state) {
+      return empty(f\head($state)) ?
+        pp\printError('nexists', f\last($state)) :
+        pp\printTable(
+          ['item', 'info'],
+          pp\customTableRows(
+            pr\getUtilityMetadata(f\last(f\head($state))),
+            $mapper
+          ),
+          [2, 0]
+        );
+    }
   );
 
-  return IO\IO(fn (): string => $metadata($function));
+  return IO\IO($metadata($function));
 }
 
 const docFuncCmd = __NAMESPACE__ . '\\docFuncCmd';
@@ -245,7 +306,7 @@ function phpExec(string $cmd): IO
     f\partialRight('popen', 'r'),
     f\partialRight('fread', 8192),
     f\partial(f\concat, '', '=>'),
-    IO\IO,
+    IO\IO
   );
 
   return $exec($cmd);

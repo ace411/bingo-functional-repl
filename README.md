@@ -14,7 +14,7 @@ A simple REPL for the bingo-functional library.
 
 ## Requirements
 
-- PHP 7.4 or greater
+- PHP 7.2 or greater
 
 - ext-apcu
 

@@ -6,13 +6,11 @@ namespace Chemem\Bingo\Functional\Repl\Tests;
 
 \error_reporting(0);
 
-use \Eris\Generator;
-use Chemem\Bingo\Functional\{
-  Repl\Parser as p,
-  Algorithms as f,
-  Functors\Monads\State,
-  Functors\Monads\IO,
-};
+use Eris\Generator;
+use Chemem\Bingo\Functional as f;
+use Chemem\Bingo\Functional\Repl\Parser as p;
+use Chemem\Bingo\Functional\Functors\Monads\State;
+use Chemem\Bingo\Functional\Functors\Monads\IO;
 
 class ParserTest extends \PHPUnit\Framework\TestCase
 {
@@ -32,6 +30,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
       ->forAll(
         Generator\elements(
           'echo 12',
+          'function ($x) { return $x . "foo"; }',
           'fn ($x) => $x ** 2;',
           'array_merge(range(1, 4), range(5, 7))',
           ''
@@ -61,7 +60,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           'is_array',
           f\identity,
           f\keysExist,
-          f\map,
+          f\map
         )
       )
       ->then(function (string $func) {
@@ -82,7 +81,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
         Generator\elements(
           \StdClass::class,
           IO::class,
-          State::class,
+          State::class
         )
       )
       ->then(function (string $class) {
@@ -106,7 +105,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           IO::class,
           State::class,
           'foo',
-          'foo_bar',
+          'foo_bar'
         )
       )
       ->then(function (string $artifact) {
@@ -138,7 +137,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           'Maybe',
           'Applicative',
           'Asterisk',
-          'foo_bar',
+          'foo_bar'
         )
       )
       ->then(function (string $artifact) {
@@ -164,13 +163,16 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           'identity',
           'isArrayOf',
           'Collection::from',
-          'maybe',
+          'maybe'
         )
       )
       ->then(function (string $name) {
-        $modify     = f\compose(p\generateAst, fn ($ast) => (
-          p\modifyNodeName($ast[0]->expr->name)
-        ));
+        $modify     = f\compose(
+          p\generateAst,
+          function ($ast) {
+            return p\modifyNodeName(f\head($ast)->expr->name);
+          }
+        );
         $identifier = $modify($name);
 
         $this->assertIsObject($identifier);
@@ -190,9 +192,9 @@ class ParserTest extends \PHPUnit\Framework\TestCase
       ->forAll(
         Generator\elements('x', 'y', 'z'),
         Generator\elements(
-          'fn ($x) => $x ** 2',
+          'function ($x) { return $x ** 2; }',
           f\concat('', f\identity, '(2)')
-        ),
+        )
       )
       ->then(function (string $var, string $expr) {
         $add = p\storeAdd($var, $expr);
@@ -225,9 +227,12 @@ class ParserTest extends \PHPUnit\Framework\TestCase
     $evalExpr = f\compose(
       p\generateAst,
       f\head,
-      State\evalState(State\gets(fn (object $root): object => (
-        $root->jsonSerialize()['expr']
-      )), null),
+      State\evalState(
+        State\gets(function (object $root) {
+          return $root->jsonSerialize()['expr'];
+        }),
+        null
+      )
     );
 
     return $evalExpr(empty($code) ? '""' : $code);
@@ -242,18 +247,21 @@ class ParserTest extends \PHPUnit\Framework\TestCase
       ->forAll(
         Generator\elements(
           'identity(12 + 2)',
+          'map(function ($x) { return $x ** 2 }, range(1, 9))',
           'map(fn ($x) => $x ** 2, range(1, 9))',
           'Collection::from(range(3, 8))',
-          'is_array(range(4, 5))',
+          'is_array(range(4, 5))'
         )
       )
       ->then(function (string $stmt) {
         $parse    = f\compose(
-          fn ($code) => f\head(self::extractExpr($code)),
-          evalFunctionCall,
+          function ($code) {
+            return f\head(self::extractExpr($code));
+          },
+          evalFunctionCall
         );
         $parsable = $parse($stmt);
-        
+
         $this->assertInstanceOf(IO::class, $parsable);
         $this->assertIsString($parsable->exec());
       });
@@ -271,12 +279,15 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           '$y = fn ($x) => $x ** 2',
           '$y = "foo-bar"',
           '$z = strtoupper("FOO")',
+          '$y = function ($x) { return $x + 3; }'
         )
       )
       ->then(function (string $stmt) {
         $parse    = f\compose(
-          fn ($code) => f\head(self::extractExpr($code)),
-          evalAssign,
+          function ($code) {
+            return f\head(self::extractExpr($code));
+          },
+          evalAssign
         );
         $parsable = $parse($stmt);
 
@@ -292,7 +303,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
   {
     $this
       ->forAll(
-        Generator\elements('$x', '$y', '$z'),
+        Generator\elements('$x', '$y', '$z')
       )
       ->then(function (string $var) {
         [$expr,]  = self::extractExpr($var);
@@ -318,13 +329,13 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           '2 + 2',
           '"foo-" . strtoupper("bar")',
           '4 == "4"',
-          '',
+          ''
         )
       )
       ->then(function (string $stmt) {
         [$expr, $node] = self::extractExpr($stmt);
         $parsable = evalExpression($node, $expr);
-         
+
         $this->assertInstanceOf(IO::class, $parsable);
         $this->assertIsString($parsable->exec());
       });
