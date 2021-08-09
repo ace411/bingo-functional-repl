@@ -120,7 +120,7 @@ function historyCmd(Stdio $stdio, array $history): IO
       ['#', 'cmd'],
       pp\customTableRows($history, $mapper),
       [2, 0]
-    ),
+    )
   );
 }
 const historyCmd          = __NAMESPACE__ . '\\historyCmd';

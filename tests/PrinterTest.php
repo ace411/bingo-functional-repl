@@ -109,7 +109,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
       ->forAll(
         Generator\tuple(
           Generator\elements('foo', 'bar'),
-          Generator\elements('bar', 'baz'),
+          Generator\elements('bar', 'baz')
         )
       )
       ->then(function (array $items) {

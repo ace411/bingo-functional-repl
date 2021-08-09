@@ -81,7 +81,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
         Generator\elements(
           \StdClass::class,
           IO::class,
-          State::class,
+          State::class
         )
       )
       ->then(function (string $class) {
@@ -258,7 +258,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           function ($code) {
             return f\head(self::extractExpr($code));
           },
-          evalFunctionCall,
+          evalFunctionCall
         );
         $parsable = $parse($stmt);
 
@@ -287,7 +287,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           function ($code) {
             return f\head(self::extractExpr($code));
           },
-          evalAssign,
+          evalAssign
         );
         $parsable = $parse($stmt);
 
