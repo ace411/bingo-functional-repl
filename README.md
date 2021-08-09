@@ -1,20 +1,24 @@
-# bingo-functional-repl
-
 <p align="center">
   <img src="https://camo.githubusercontent.com/1da75cf9dfb79f1a0fb4457016145e497bc91558/68747470733a2f2f756361726563646e2e636f6d2f66393966326135342d373435312d343630332d613738382d6637623134383631633139662f62696e676f66756e6374696f6e616c7265706c6c6f676f363030783333382e706e67" />
 </p>
 
-A simple REPL for the bingo-functional library.
+<h1 align="center">bingo-functional-repl</h1>
 
-[![Build Status](https://travis-ci.org/ace411/bingo-functional-repl.svg?branch=master)](https://travis-ci.org/ace411/bingo-functional-repl)
+<p align="center">A simple REPL for the bingo-functional library.</p>
+
+<span style="display:block;text-align:center;" align="center">
+
+[![bingo-functional-repl CI](https://github.com/ace411/bingo-functional-repl/actions/workflows/php.yml/badge.svg)](https://github.com/ace411/bingo-functional-repl/actions/workflows/php.yml)
 [![License](https://poser.pugx.org/chemem/bingo-functional-repl/license)](//packagist.org/packages/chemem/bingo-functional-repl)
 [![composer.lock](https://poser.pugx.org/chemem/bingo-functional-repl/composerlock)](//packagist.org/packages/chemem/bingo-functional-repl)
 [![Latest Stable Version](https://poser.pugx.org/chemem/bingo-functional-repl/v)](//packagist.org/packages/chemem/bingo-functional-repl)
 [![Latest Unstable Version](https://poser.pugx.org/chemem/bingo-functional-repl/v/unstable)](//packagist.org/packages/chemem/bingo-functional-repl)
 
+</span>
+
 ## Requirements
 
-- PHP 7.4 or greater
+- PHP 7.2 or greater
 
 - ext-apcu
 
@@ -39,6 +43,8 @@ Upon successful installation of the package, type the following - also in a pref
 ```sh
 $ path/to/vendor/bin/bfrepl
 ```
+
+Type `howto` when prompted for input for more information on how to use the REPL.
 
 ## Demonstration
 
