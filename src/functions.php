@@ -88,7 +88,7 @@ function exitCmd(Stdio $stdio): IO
   return IO\IO(function () use ($stdio): Stdio {
     $genMsg = f\compose(
       f\partialRight(f\pluck, 'neutral'),
-      f\partial(pp\colorOutput, 'Thanks for using the REPL'),
+      f\partial(pp\colorOutput, 'Thanks for using the REPL')
     );
 
     $stdio->end($genMsg(REPL_COLORS));
