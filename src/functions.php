@@ -119,7 +119,7 @@ function historyCmd(Stdio $stdio, array $history): IO
     pp\printTable(
       ['#', 'cmd'],
       pp\customTableRows($history, $mapper),
-      [2, 0],
+      [2, 0]
     ),
   );
 }
