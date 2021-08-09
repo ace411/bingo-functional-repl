@@ -2,7 +2,7 @@
 
 /**
  * REPL printer functions
- * 
+ *
  * @package bingo-functional-repl
  * @author  Lochemem Bruno Michael
  * @license Apache-2.0
@@ -12,21 +12,18 @@ declare(strict_types=1);
 
 namespace Chemem\Bingo\Functional\Repl\Printer;
 
-use Chemem\Bingo\Functional\{
-  Algorithms as f,
-  PatternMatching as p,
-  Functors\Monads\IO,
-};
+use Chemem\Bingo\Functional as f;
 use Chemem\Bingo\Functional\Repl;
+use Chemem\Bingo\Functional\Functors\Monads\IO;
 use JakubOnderka\PhpConsoleColor\ConsoleColor;
 use Mmarica\DisplayTable;
 
 /**
  * colorOutput
  * apply color to standard output text
- * 
+ *
  * colorOutput :: String -> String -> String
- * 
+ *
  * @param string $text
  * @param string $color
  */
@@ -37,11 +34,11 @@ function colorOutput(string $text, string $color = 'none'): string
 const colorOutput         = __NAMESPACE__ . '\\colorOutput';
 
 /**
- * printTable 
+ * printTable
  * conveys list data as a table
- * 
+ *
  * printTable :: Array -> Array -> Array -> Bool -> String
- * 
+ *
  * @param array $headerRow  Table header data
  * @param array $dataRow    Table rows
  * @param array $padding    Table padding value
@@ -68,20 +65,25 @@ const printTable          = __NAMESPACE__ . '\\printTable';
 /**
  * customTableRows
  * create custom table row data via customizable handler
- * 
+ *
  * customTableRows :: Array -> (Array -> Array) -> Array
- * 
+ *
  * @param array     $data
  * @param callable  $mapper
  */
 function customTableRows(array $data, ?callable $mapper): array
 {
-  $toRows = f\compose(f\toPairs, f\partial(
-    f\map,
-    !\is_null($mapper) ?
-      $mapper :
-      fn (array $pair): array => [f\head($pair), f\last($pair)]
-  ));
+  $toRows = f\compose(
+    f\toPairs,
+    f\partial(
+      f\map,
+      !\is_null($mapper) ?
+        $mapper :
+        function (array $pair) {
+          return [f\head($pair), f\last($pair)];
+        }
+    )
+  );
 
   return $toRows($data);
 }
@@ -90,16 +92,18 @@ const customTableRows     = __NAMESPACE__ . '\\customTableRows';
 /**
  * headerText
  * returns header-styled text
- * 
+ *
  * headerText :: String -> String
- * 
+ *
  * @param string $txts,...
  */
 function headerText(string ...$txts): string
 {
   $ret = f\compose(
     f\partial(f\map, f\partialRight(colorOutput, 'light_blue')),
-    f\identity(fn (array $colorTxt): string => f\concat(PHP_EOL, ...$colorTxt))
+    function (array $color) {
+      return f\concat(PHP_EOL, ...$color);
+    }
   );
 
   return $ret($txts);
@@ -109,9 +113,9 @@ const headerText          = __NAMESPACE__ . '\\headerText';
 /**
  * printMistake
  * returns mistake-styled text
- * 
+ *
  * printMistake :: String -> String -> Bool -> String
- * 
+ *
  * @param string  $type
  * @param string  $errorMsg
  * @param bool    $isWarning
@@ -134,9 +138,9 @@ const printMistake       = __NAMESPACE__ . '\\printMistake';
 /**
  * printError
  * returns error-styled text
- * 
+ *
  * printError :: String -> String -> String
- * 
+ *
  * @param string $type
  * @param string $errorMsg
  */
@@ -157,9 +161,9 @@ const printWarning        = __NAMESPACE__ . '\\printWarning';
 /**
  * genCmdDirective
  * returns executable PHP command line directive
- * 
+ *
  * genCmdDirective :: String -> String
- * 
+ *
  * @param string $code
  */
 function genCmdDirective(string $code): string
@@ -190,9 +194,9 @@ const genCmdDirective   = __NAMESPACE__ . '\\genCmdDirective';
 /**
  * printObject
  * returns REPL-apt string representation of an object
- * 
+ *
  * printObject :: Object -> String
- * 
+ *
  * @param object $input
  */
 function printObject(object $input): string
@@ -201,26 +205,35 @@ function printObject(object $input): string
   $type   = colorOutput('(Object)', 'magenta');
 
   // store object properties in array
-  $props  = f\fold(function (array $acc, object $val) use ($ref, $input) {
-    $name = $val->getName();
-    $prop = $ref->getProperty($name);
-    $prop->setAccessible(true);
+  $props  = f\fold(
+    function (array $acc, object $val) use ($ref, $input) {
+      $name = $val->getName();
+      $prop = $ref->getProperty($name);
+      $prop->setAccessible(true);
 
-    $acc[$name] = $prop->getValue($input);
+      $acc[$name] = $prop->getValue($input);
 
-    return $acc;
-  }, $ref->getProperties(), []);
+      return $acc;
+    },
+    $ref->getProperties(),
+    []
+  );
 
-  return f\concat(' ', $type, $ref->getShortName(), printArray($props, '(Properties)'));
+  return f\concat(
+    ' ',
+    $type,
+    $ref->getShortName(),
+    printArray($props, '(Properties)')
+  );
 }
 const printObject         = __NAMESPACE__ . '\\printObject';
 
 /**
  * handleBool
  * returns boolean string representations; string-coercible non-boolean values otherwise
- * 
+ *
  * handleBool :: a -> String
- * 
+ *
  * @param int|bool|string|float $val
  */
 function handleBool($val): string
@@ -232,16 +245,19 @@ const handleBool          = __NAMESPACE__ . '\\handleBool';
 /**
  * printArray
  * returns REPL-apt string representation of an array
- * 
+ *
  * printArray :: Array -> String
- * 
+ *
  * @param array $input
  */
 function printArray(array $input, string $alias = '(Array)'): string
 {
   $print = f\compose(
     // convert the array input to JSON
-    f\partialRight('json_encode', JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK | JSON_ERROR_INF_OR_NAN | JSON_FORCE_OBJECT),
+    f\partialRight(
+      'json_encode',
+      JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK | JSON_ERROR_INF_OR_NAN | JSON_FORCE_OBJECT
+    ),
     // remove double quotes in string values
     f\partial('str_replace', '"', ''),
     // enclose keys in square brackets
@@ -257,9 +273,9 @@ const printArray = __NAMESPACE__ . '\\printArray';
 /**
  * printOther
  * returns REPL-apt string representations of non-array and non-object values
- * 
+ *
  * printOther :: a -> String
- * 
+ *
  * @param int|float|bool|string $input
  */
 function printOther($input): string
@@ -278,16 +294,16 @@ const printOther          = __NAMESPACE__ . '\\printOther';
 /**
  * printReplOutput
  * conveys REPL-apt string representations of output values
- * 
+ *
  * printReplOutput :: a -> IO ()
- * 
+ *
  * @param int|float|bool|string|object|array $input
  */
 function printReplOutput($input): IO
 {
   $type   = \gettype($input);
   $print  = f\compose(IO\IO, IO\_print);
-  
+
   return $print(
     $type === 'object' ?
       printObject($input) :

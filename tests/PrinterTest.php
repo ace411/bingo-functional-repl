@@ -6,12 +6,10 @@ namespace Chemem\Bingo\Functional\Repl\Tests;
 
 \error_reporting(0);
 
-use \Eris\Generator;
-use Chemem\Bingo\Functional\{
-  Functors\Maybe,
-  Algorithms as f,
-  Repl\Printer as pp,
-};
+use Eris\Generator;
+use Chemem\Bingo\Functional as f;
+use Chemem\Bingo\Functional\Functors\Maybe;
+use Chemem\Bingo\Functional\Repl\Printer as pp;
 
 class PrinterTest extends \PHPUnit\Framework\TestCase
 {
@@ -25,7 +23,9 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
     $this
       ->forAll(
         Generator\suchThat(
-          fn (string $str): bool => \mb_strlen($str, 'utf-8') >= 1,
+          function (string $str) {
+            return \mb_strlen($str, 'utf-8') >= 1;
+          },
           Generator\string()
         ),
         Generator\elements(
@@ -68,7 +68,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
         $print    = f\partial(pp\printTable, $header, $data, $padding);
         $border   = $print(true);
         $noBorder = $print(false);
-        
+
         $this->assertIsString($border);
         $this->assertIsString($noBorder);
       });
@@ -87,10 +87,13 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
         ])
       )
       ->then(function (array $data) {
-        $plain = pp\customTableRows($data, null);
-        $wcallback = pp\customTableRows($data, fn (array $pair): array => (
-          [\strtoupper(f\head($pair)), f\last($pair)]
-        ));
+        $plain      = pp\customTableRows($data, null);
+        $wcallback  = pp\customTableRows(
+          $data,
+          function (array $pair) {
+            return [\strtoupper(f\head($pair)), f\last($pair)];
+          }
+        );
 
         $this->assertIsArray($plain);
         $this->assertIsArray($wcallback);

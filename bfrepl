@@ -3,7 +3,7 @@
 
 /**
  * REPL executable script
- * 
+ *
  * @package bingo-functional-repl
  * @author  Lochemem Bruno Michael
  * @license Apache-2.0
@@ -15,51 +15,50 @@ foreach (
 		__DIR__ . '/../../autoload.php',
 		__DIR__ . '/../vendor/autoload.php',
 		__DIR__ . '/vendor/autoload.php',
-		__DIR__ . '/../../vendor/autoload.php'
+		__DIR__ . '/../../vendor/autoload.php',
 	] as $file
 ) {
-	if (file_exists($file)) {
-		define('AUTOLOAD_PHP_FILE', $file);
-		break;
-	}    
+  if (\file_exists($file)) {
+    \define('AUTOLOAD_PHP_FILE', $file);
+    break;
+  }
 }
-if (!defined('AUTOLOAD_PHP_FILE')) {
-	fwrite(STDERR,
-		'You need to set up the project dependencies using the following commands:' . PHP_EOL .
-		'wget http://getcomposer.org/composer.phar' . PHP_EOL .
-		'php composer.phar install' . PHP_EOL
-	);
-	die(1);
+if (!\defined('AUTOLOAD_PHP_FILE')) {
+  \fwrite(
+    STDERR,
+    'You need to set up the project dependencies using the following commands:' . PHP_EOL .
+        'wget http://getcomposer.org/composer.phar' . PHP_EOL .
+        'php composer.phar install' . PHP_EOL
+  );
+  die(1);
 }
 require AUTOLOAD_PHP_FILE;
 
-use \React\{
-	EventLoop\Factory,
-	EventLoop\LoopInterface,
-};
-use \Clue\React\Stdio\Stdio;
-use \Chemem\Bingo\Functional\{
-	Algorithms as f,
-	Functors\Monads\IO,
-	Functors\Monads as m,
-};
-use \Chemem\Bingo\Functional\Repl;
+use React\EventLoop\Loop;
+use Clue\React\Stdio\Stdio;
+use Chemem\Bingo\Functional as f;
+use Chemem\Bingo\Functional\Functors\Monads\IO;
+use Chemem\Bingo\Functional\Functors\Monads as m;
+use Chemem\Bingo\Functional\Repl;
 
-set_exception_handler(fn (\Throwable $err) => IO\_print(
-	IO\IO(fn (): string => Repl\Printer\printError(
-		'nexecutable', 
-		$err->getMessage()
-	))
-));
+\set_exception_handler(function (\Throwable $err) {
+  return IO\_print(
+    IO\IO(
+      Repl\Printer\printError('nexecutable', $err->getMessage())
+    )
+  );
+});
 
-$loop		= Factory::create();
+$loop   = Loop::get();
 $stdio 	= new Stdio($loop);
 $stdio->setPrompt(Repl\REPL_PROMPT);
 
 $input = m\mcompose(
   f\partialRight(Repl\getInput, $loop),
-  f\partialRight(Repl\printHeaderTxt, 'by @ace411', Repl\REPL_BANNER),
+  f\partialRight(
+    Repl\printHeaderTxt,
+    'bingo-functional by Lochemem Bruno Michael @ace411'
+  ),
 );
 
 $input(IO\IO($stdio))->exec();
-$loop->run();

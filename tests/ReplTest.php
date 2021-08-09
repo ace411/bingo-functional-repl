@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 namespace Chemem\Bingo\Functional\Repl\Tests;
 
-use \Eris\Generator;
-use Chemem\Bingo\Functional\{
-  Repl,
-  Algorithms as f,
-  Repl\Parser as pp,
-  Functors\Monads\IO,
-};
+use Eris\Generator;
+use Chemem\Bingo\Functional\Repl;
+use Chemem\Bingo\Functional\Functors\Monads\IO;
 
 class ReplTest extends \PHPUnit\Framework\TestCase
 {
   use \Eris\TestTrait;
-  
+
   /**
    * @test
    */
@@ -114,6 +110,7 @@ class ReplTest extends \PHPUnit\Framework\TestCase
           '"foo" . "bar"',
           '"foo-" . strtoupper("baz")',
           'map(fn ($x) => $x ** 2, range(5, 11))',
+          'map(function ($x) { return $x . "foo"; }, ["baz", "bar"])',
           'Collection::from(["foo", "bar"])->tail()',
           'exit',
         ),
