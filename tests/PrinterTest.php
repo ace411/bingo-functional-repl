@@ -8,7 +8,7 @@ namespace Chemem\Bingo\Functional\Repl\Tests;
 
 use Eris\Generator;
 use Chemem\Bingo\Functional as f;
-use Chemem\Bingo\Functional\Functors\Maybe;
+use Chemem\Bingo\Functional\Functors\Monads\Maybe;
 use Chemem\Bingo\Functional\Repl\Printer as pp;
 
 class PrinterTest extends \PHPUnit\Framework\TestCase
@@ -127,7 +127,11 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
     $this
       ->forAll(
         Generator\elements('nexists', 'nparsable', 'nexecutable'),
-        Generator\elements('spike()', 'const foo = fn ($x) => $x + 2', '[$x,] = range(1, 2)'),
+        Generator\elements(
+          'spike()',
+          'const foo = fn ($x) => $x + 2',
+          '[$x,] = range(1, 2)'
+        )
       )
       ->then(function (string $err, string $msg) {
         $res = pp\printError($err, $msg);
@@ -147,7 +151,7 @@ class PrinterTest extends \PHPUnit\Framework\TestCase
           '$add = fn ($x, $y) => $x + $y',
           'identity(12)',
           'Maybe::just(2)->filter(fn ($x) => $x % 2 == 0)',
-          'Collection::from(range(1, 5))->map(fn ($x) => $x ** 2)',
+          'Collection::from(range(1, 5))->map(fn ($x) => $x ** 2)'
         )
       )
       ->then(function (string $expr) {

@@ -60,7 +60,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           'is_array',
           f\identity,
           f\keysExist,
-          f\map,
+          f\map
         )
       )
       ->then(function (string $func) {
@@ -105,7 +105,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           IO::class,
           State::class,
           'foo',
-          'foo_bar',
+          'foo_bar'
         )
       )
       ->then(function (string $artifact) {
@@ -137,7 +137,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           'Maybe',
           'Applicative',
           'Asterisk',
-          'foo_bar',
+          'foo_bar'
         )
       )
       ->then(function (string $artifact) {
@@ -163,7 +163,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           'identity',
           'isArrayOf',
           'Collection::from',
-          'maybe',
+          'maybe'
         )
       )
       ->then(function (string $name) {
@@ -194,7 +194,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
         Generator\elements(
           'function ($x) { return $x ** 2; }',
           f\concat('', f\identity, '(2)')
-        ),
+        )
       )
       ->then(function (string $var, string $expr) {
         $add = p\storeAdd($var, $expr);
@@ -232,7 +232,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           return $root->jsonSerialize()['expr'];
         }),
         null
-      ),
+      )
     );
 
     return $evalExpr(empty($code) ? '""' : $code);
@@ -250,7 +250,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           'map(function ($x) { return $x ** 2 }, range(1, 9))',
           'map(fn ($x) => $x ** 2, range(1, 9))',
           'Collection::from(range(3, 8))',
-          'is_array(range(4, 5))',
+          'is_array(range(4, 5))'
         )
       )
       ->then(function (string $stmt) {
@@ -303,7 +303,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
   {
     $this
       ->forAll(
-        Generator\elements('$x', '$y', '$z'),
+        Generator\elements('$x', '$y', '$z')
       )
       ->then(function (string $var) {
         [$expr,]  = self::extractExpr($var);
@@ -329,7 +329,7 @@ class ParserTest extends \PHPUnit\Framework\TestCase
           '2 + 2',
           '"foo-" . strtoupper("bar")',
           '4 == "4"',
-          '',
+          ''
         )
       )
       ->then(function (string $stmt) {

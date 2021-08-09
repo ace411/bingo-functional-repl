@@ -90,7 +90,7 @@ function evalExpression(Node $node, Node $expr): IO
   );
   $concat = f\partialRight(
     f\partial(f\concat, '', '[', '"PhpParser","Node","Expr",'),
-    ']',
+    ']'
   );
 
   return p\patternMatch([
@@ -145,7 +145,7 @@ const parseCode = __NAMESPACE__ . '\\parseCode';
  */
 function parse(string $input, array $history = []): IO
 {
-  $parser = p\match([
+  $parser = p\cmatch([
     '(x:xs:_)' => function (string $cmd, string $func) use ($input) {
       return $cmd == 'doc' ?
         docFuncCmd($func) :

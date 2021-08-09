@@ -15,6 +15,7 @@ return $config
   ->setRules([
     '@PSR12'                      => true,
     'linebreak_after_opening_tag' => true,
+    'trailing_comma_in_multiline' => false,
     'binary_operator_spaces'      => [
       'operators' => ['=>' => 'align', '=' => 'align'],
     ],

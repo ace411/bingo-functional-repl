@@ -184,7 +184,7 @@ function genCmdDirective(string $code): string
     // append executable PHP code to php -r command
     f\partial(f\concat, ' ', 'php', '-r'),
     // replace carriage returns and new line characters with spaces
-    f\partial('str_replace', PHP_EOL, ' '),
+    f\partial('str_replace', PHP_EOL, ' ')
   );
 
   return $expr($code);
